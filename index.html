@@ -464,6 +464,22 @@
       100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
     }
 
+    /* ── Perfect-placement star overlay ── */
+    .piece-star {
+      position: fixed;
+      pointer-events: none;
+      z-index: 500;
+      font-size: 15px;
+      animation: piece-star-pop 0.8s ease-out forwards;
+    }
+
+    @keyframes piece-star-pop {
+      0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+      30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+      65%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8) translateY(-12px); }
+    }
+
     /* ── Debug panel ── */
     #debug-btn {
       position: fixed;
@@ -980,6 +996,40 @@
       return scored[scored.length - 1].template;
     }
 
+    // ── Sequential piece playability check ─────────────────────────
+    // Returns true if a piece fits at (col, row) on an arbitrary grid snapshot.
+    function canPlacePieceOnGrid(piece, col, row, g) {
+      return piece.shape.every(([pc, pr]) => {
+        const c = col + pc, r = row + pr;
+        return c >= 0 && c < GRID_SIZE && r >= 0 && r < GRID_SIZE && !g[r][c];
+      });
+    }
+
+    // Returns true if all 3 pieces can be placed in SOME sequential order
+    // on the current board (without accounting for line clears, which only
+    // make the board less full — i.e. this is a conservative lower bound).
+    function canAllPiecesPlaySequentially(pieces) {
+      const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+      return perms.some(order => {
+        const tmpGrid = grid.map(r => [...r]);
+        for (const idx of order) {
+          let placed = false;
+          outer:
+          for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+              if (canPlacePieceOnGrid(pieces[idx], c, r, tmpGrid)) {
+                pieces[idx].shape.forEach(([pc, pr]) => { tmpGrid[r + pr][c + pc] = 'x'; });
+                placed = true;
+                break outer;
+              }
+            }
+          }
+          if (!placed) return false;
+        }
+        return true;
+      });
+    }
+
     function generatePiece(fullness) {
       const small  = PIECES.filter(p => p.size <= 3);
       const medium = PIECES.filter(p => p.size >= 3 && p.size <= 5);
@@ -1037,7 +1087,8 @@
       const full      = boardFullness();
       const hardSlots = difficulty === 'hard' ? 2 : difficulty === 'medium' ? 1 : 0;
       let attempts    = 0;
-      do {
+
+      const makePieces = () => {
         currentPieces = [];
         for (let i = 0; i < 3; i++) {
           const isHardSlot = i < hardSlots;
@@ -1047,8 +1098,24 @@
             currentPieces.push(generatePiece(full));
           }
         }
+      };
+
+      // Try to generate a set where all 3 pieces can be played in some order.
+      // (Conservative check without line clears — actual gameplay is more lenient.)
+      do {
+        makePieces();
         attempts++;
-      } while (attempts < 20 && !currentPieces.some(p => canPieceFitAnywhere(p)));
+      } while (attempts < 30 && !canAllPiecesPlaySequentially(currentPieces));
+
+      // Safety net: if still can't guarantee sequential play, at least one must fit.
+      if (!currentPieces.some(p => canPieceFitAnywhere(p))) {
+        attempts = 0;
+        do {
+          currentPieces = [];
+          for (let i = 0; i < 3; i++) currentPieces.push(generatePiece(full));
+          attempts++;
+        } while (attempts < 20 && !currentPieces.some(p => canPieceFitAnywhere(p)));
+      }
 
       // Safety net: if near-complete lines exist but no offered piece can clear one,
       // try to swap in a piece that can (up to 8 attempts).
@@ -1355,6 +1422,9 @@
 
       if (rowsToClear.length === 0 && colsToClear.length === 0) return;
 
+      // ✨ Perfect placement — show stars over each cell of the placed piece
+      showPerfectPlacementStars(placedCol, placedRow, piece);
+
       isAnimating = true;
       updateUndoBtn(); // disable undo while animation plays
 
@@ -1638,6 +1708,23 @@
       notifEl.classList.add('show');
       if (notifTimer) clearTimeout(notifTimer);
       notifTimer = setTimeout(() => notifEl.classList.remove('show'), 2200);
+    }
+
+    // Show a ⭐ over each cell of the just-placed piece (called on any line-clearing placement).
+    function showPerfectPlacementStars(placedCol, placedRow, piece) {
+      piece.shape.forEach(([pc, pr], i) => {
+        const cellEl = getCell(placedCol + pc, placedRow + pr);
+        if (!cellEl) return;
+        const rect = cellEl.getBoundingClientRect();
+        const star = document.createElement('div');
+        star.className = 'piece-star';
+        star.textContent = '⭐';
+        star.style.animationDelay = `${i * 40}ms`;
+        star.style.left = `${rect.left + rect.width  / 2}px`;
+        star.style.top  = `${rect.top  + rect.height / 2}px`;
+        document.body.appendChild(star);
+        setTimeout(() => star.remove(), 900 + i * 40);
+      });
     }
 
     function showScorePopup(msg) {
