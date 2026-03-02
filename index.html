@@ -98,6 +98,30 @@
     .hud-icon-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
     .hud-icon-btn:active { transform: scale(0.88); }
 
+    /* Undo button — distinct from restart, shows available-undo count */
+    #undo-btn {
+      background: rgba(167, 139, 250, 0.12);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      border-radius: 8px;
+      color: rgba(167, 139, 250, 0.9);
+      font-size: 13px;
+      min-width: 44px;
+      height: 30px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: background 0.15s, transform 0.1s, border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+      padding: 0 5px;
+    }
+    #undo-btn:hover:not(:disabled) { background: rgba(167, 139, 250, 0.28); color: #a78bfa; }
+    #undo-btn:active:not(:disabled) { transform: scale(0.88); }
+    #undo-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+    /* Gold tint once undo has been used — reminds player score won't be recorded */
+    #undo-btn.undo-used { border-color: rgba(251,191,36,0.45); color: rgba(251,191,36,0.85); background: rgba(251,191,36,0.08); }
+
     /* ── Grid ── */
     #grid-container {
       background: rgba(0,0,0,0.3);
@@ -470,6 +494,7 @@
         <span class="hud-label">Round</span>
         <span class="hud-value" id="round-display">1</span>
       </div>
+      <button id="undo-btn" class="hidden" title="Undo last move (max 3) — score won't count toward high score if used">↩<span id="undo-count">3</span></button>
       <button id="restart-btn" class="hud-icon-btn hidden" title="Restart game">↺</button>
     </div>
 
@@ -609,6 +634,18 @@
     let baseMultiplier = 1;      // +1 each board wipe; applied to line scoring
     let boardWipeCount = 0;
 
+    // ── Undo system ─────────────────────────────────────────────────
+    // Stores up to 3 full game-state snapshots taken before each piece placement.
+    // Once undo is used in a session, the final score is not recorded as a high score.
+    let undoHistory  = [];    // Array of state snapshots (max 3 entries)
+    let undoUsed     = false; // True once undo is used this game session
+    let isAnimating  = false; // True during line-clear animation
+
+    // Tracked timeout IDs so undo can cancel pending async operations
+    let clearLinesTimeoutId       = null;
+    let generatePieceSetTimeoutId = null;
+    let checkGameOverTimeoutId    = null;
+
     // Per-difficulty high score keys
     const HS_KEY = { easy: 'bbHS_easy', medium: 'bbHS_medium', hard: 'bbHS_hard' };
     const getHS  = () => parseInt(localStorage.getItem(HS_KEY[difficulty]) || '0');
@@ -652,6 +689,8 @@
     const debugChanceEl   = document.getElementById('debug-chance');
     const debugMultEl     = document.getElementById('debug-mult');
     const debugNearEl     = document.getElementById('debug-nearlines');
+    const undoBtnEl       = document.getElementById('undo-btn');
+    const undoCountEl     = document.getElementById('undo-count');
 
     // ═══════════════════════════════════════════════════════════════
     // GRID SETUP
@@ -843,6 +882,28 @@
       if      (fullness > 0.62) pool = [...small, ...small, ...medium];
       else if (fullness > 0.40) pool = [...small, ...medium, ...medium];
       else                      pool = [...small, ...medium, ...medium, ...large];
+
+      // ── Compact-shape priority ───────────────────────────────────
+      // When rows/columns are nearly complete (≤ 2 cells missing),
+      // irregular pieces often leave 1–2 stray cells in adjacent lines,
+      // blocking further clears. Compact squares (2×2, 3×3) avoid this
+      // because every cell they place is in a shared block of rows AND
+      // columns — no isolated stragglers. We boost their pool weight
+      // proportionally to how many near-complete lines are on the board.
+      const nearLines = countNearCompleteLines(2);
+      if (nearLines > 0) {
+        const p2x2 = PIECES.find(p => p.name === '2x2');
+        // Extra copies: 2 base + 1 per near-complete line, capped at 5
+        const extras = Math.min(2 + nearLines, 5);
+        for (let i = 0; i < extras; i++) if (p2x2) pool.push(p2x2);
+
+        // Include 3×3 at moderate fullness (needs enough room to fit)
+        if (fullness <= 0.52) {
+          const p3x3 = PIECES.find(p => p.name === '3x3');
+          const extras3 = Math.min(1 + Math.floor(nearLines / 2), 3);
+          for (let i = 0; i < extras3; i++) if (p3x3) pool.push(p3x3);
+        }
+      }
 
       // Score each candidate against the live board and do a weighted draw.
       // This biases the selection toward pieces that can clear (or fill) the
@@ -1105,6 +1166,9 @@
       const { col, row } = gridPositionFromXY(clientX, clientY, piece);
       if (!canPlacePiece(piece, col, row)) return;
 
+      // Snapshot current state BEFORE mutating anything — enables undo
+      saveUndoSnapshot();
+
       // Stamp piece onto grid
       piece.shape.forEach(([pc, pr]) => { grid[row + pr][col + pc] = piece.color; });
       currentPieces[draggedPiece.index].used = true;
@@ -1123,13 +1187,19 @@
         updateHardChance();
         updateHUD();
         // Delay new piece set until after clear animation (390 ms) + buffer
-        setTimeout(generatePieceSet, 450);
+        generatePieceSetTimeoutId = setTimeout(() => {
+          generatePieceSetTimeoutId = null;
+          generatePieceSet();
+        }, 450);
       } else {
         // Re-render tray immediately (pre-clear state); will re-render again post-clear
         renderPieces();
       }
 
-      setTimeout(checkGameOver, 480);
+      checkGameOverTimeoutId = setTimeout(() => {
+        checkGameOverTimeoutId = null;
+        checkGameOver();
+      }, 480);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1157,6 +1227,9 @@
 
       if (rowsToClear.length === 0 && colsToClear.length === 0) return;
 
+      isAnimating = true;
+      updateUndoBtn(); // disable undo while animation plays
+
       const toFlash = new Set();
       rowsToClear.forEach(r => { for (let c = 0; c < GRID_SIZE; c++) toFlash.add(`${c},${r}`); });
       colsToClear.forEach(c => { for (let r = 0; r < GRID_SIZE; r++) toFlash.add(`${c},${r}`); });
@@ -1167,7 +1240,9 @@
         if (el) el.classList.add('clearing');
       });
 
-      setTimeout(() => {
+      clearLinesTimeoutId = setTimeout(() => {
+        clearLinesTimeoutId = null;
+
         // Clear cells from grid data
         toFlash.forEach(key => {
           const [c, r] = key.split(',').map(Number);
@@ -1184,7 +1259,8 @@
         score += lineScore;
 
         renderGrid();
-        updateHUD();
+        isAnimating = false;
+        updateHUD(); // also re-enables undo button via updateUndoBtn()
 
         // Re-check which pieces can now be placed after the board opened up
         renderPieces();
@@ -1222,14 +1298,23 @@
       boardWipeCount = 0;
       hardChance     = 0.05;
 
+      // Reset undo system
+      undoHistory  = [];
+      undoUsed     = false;
+      isAnimating  = false;
+      if (clearLinesTimeoutId)       { clearTimeout(clearLinesTimeoutId);       clearLinesTimeoutId       = null; }
+      if (generatePieceSetTimeoutId) { clearTimeout(generatePieceSetTimeoutId); generatePieceSetTimeoutId = null; }
+      if (checkGameOverTimeoutId)    { clearTimeout(checkGameOverTimeoutId);     checkGameOverTimeoutId    = null; }
+
       overlayEl.classList.add('hidden');
       finalScoreEl.classList.add('hidden');
       highScoreMsgEl.classList.add('hidden');
       restartBtn.classList.remove('hidden');
+      undoBtnEl.classList.remove('hidden');
 
       initGrid();
       generatePieceSet();
-      updateHUD();
+      updateHUD(); // also calls updateUndoBtn
       if (debugVisible) updateDebugPanel();
     }
 
@@ -1242,12 +1327,17 @@
     function endGame() {
       gameState = 'over';
       restartBtn.classList.add('hidden');
+      undoBtnEl.classList.add('hidden');
 
       const hs = getHS();
-      if (score > hs) {
+      if (!undoUsed && score > hs) {
+        // Only record high score if undo was never used this session
         saveHS(score);
-        bestEl.textContent       = score;
+        bestEl.textContent         = score;
         highScoreMsgEl.textContent = '🏆 NEW HIGH SCORE!';
+        highScoreMsgEl.classList.remove('hidden');
+      } else if (undoUsed) {
+        highScoreMsgEl.textContent = '↩ Undo used — score not recorded';
         highScoreMsgEl.classList.remove('hidden');
       }
 
@@ -1263,6 +1353,69 @@
       bestEl.textContent  = Math.max(score, getHS());
       multEl.textContent  = `×${baseMultiplier}`;
       roundEl.textContent = roundCount;
+      updateUndoBtn();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // UNDO SYSTEM
+    // ═══════════════════════════════════════════════════════════════
+
+    // Captures full game state before a piece is placed.
+    // Kept to max 3 entries (oldest dropped first).
+    function saveUndoSnapshot() {
+      if (undoHistory.length >= 3) undoHistory.shift();
+      undoHistory.push({
+        grid:          grid.map(row => [...row]),
+        currentPieces: currentPieces.map(p => ({ ...p })),
+        score,
+        baseMultiplier,
+        boardWipeCount,
+        roundCount,
+        linesCleared,
+        hardChance,
+      });
+    }
+
+    // Restores the most recent snapshot.
+    // Cancels any pending async operations (animations, piece-set generation)
+    // so they cannot corrupt the restored state.
+    function performUndo() {
+      if (undoHistory.length === 0 || gameState !== 'playing') return;
+
+      // Cancel all pending game-logic timeouts
+      if (clearLinesTimeoutId)       { clearTimeout(clearLinesTimeoutId);       clearLinesTimeoutId       = null; }
+      if (generatePieceSetTimeoutId) { clearTimeout(generatePieceSetTimeoutId); generatePieceSetTimeoutId = null; }
+      if (checkGameOverTimeoutId)    { clearTimeout(checkGameOverTimeoutId);     checkGameOverTimeoutId    = null; }
+      isAnimating = false;
+
+      const snap     = undoHistory.pop();
+      grid           = snap.grid;
+      currentPieces  = snap.currentPieces;
+      score          = snap.score;
+      baseMultiplier = snap.baseMultiplier;
+      boardWipeCount = snap.boardWipeCount;
+      roundCount     = snap.roundCount;
+      linesCleared   = snap.linesCleared;
+      hardChance     = snap.hardChance;
+
+      const firstUndo = !undoUsed;
+      undoUsed = true;
+
+      renderGrid();
+      renderPieces();
+      updateHUD(); // also calls updateUndoBtn
+      if (debugVisible) updateDebugPanel();
+
+      if (firstUndo) showNotification('↩ Undo used — score won\'t count for high score');
+      else           showNotification(`↩ Undo! (${undoHistory.length} left)`);
+    }
+
+    // Syncs the undo button's count, enabled state, and visual style.
+    function updateUndoBtn() {
+      if (!undoBtnEl) return;
+      undoCountEl.textContent = undoHistory.length;
+      undoBtnEl.disabled = undoHistory.length === 0 || gameState !== 'playing' || isAnimating;
+      undoBtnEl.classList.toggle('undo-used', undoUsed);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1335,6 +1488,7 @@
       startBtn.addEventListener('click',   startGame);
       restartBtn.addEventListener('click', startGame);
       debugBtn.addEventListener('click',   toggleDebug);
+      undoBtnEl.addEventListener('click',  performUndo);
 
       // Difficulty buttons
       document.querySelectorAll('.diff-btn').forEach(btn => {
