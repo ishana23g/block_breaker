@@ -1,0 +1,22 @@
+{
+  "name": "Block Breaker",
+  "short_name": "Blocks",
+  "description": "A fun block puzzle game - clear rows and columns by placing pieces!",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a1a2e' width='192' height='192' rx='32'/><rect fill='%237c3aed' x='24' y='24' width='48' height='48' rx='8'/><rect fill='%23ec4899' x='80' y='24' width='48' height='48' rx='8'/><rect fill='%2322c55e' x='24' y='80' width='48' height='48' rx='8'/><rect fill='%23f97316' x='80' y='80' width='48' height='48' rx='8'/><rect fill='%233b82f6' x='136' y='80' width='48' height='48' rx='8'/><rect fill='%23eab308' x='80' y='136' width='48' height='48' rx='8'/><rect fill='%23ef4444' x='136' y='136' width='48' height='48' rx='8'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%231a1a2e' width='512' height='512' rx='64'/><rect fill='%237c3aed' x='48' y='48' width='120' height='120' rx='16'/><rect fill='%23ec4899' x='196' y='48' width='120' height='120' rx='16'/><rect fill='%2322c55e' x='48' y='196' width='120' height='120' rx='16'/><rect fill='%23f97316' x='196' y='196' width='120' height='120' rx='16'/><rect fill='%233b82f6' x='344' y='196' width='120' height='120' rx='16'/><rect fill='%23eab308' x='196' y='344' width='120' height='120' rx='16'/><rect fill='%23ef4444' x='344' y='344' width='120' height='120' rx='16'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
