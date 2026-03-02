@@ -40,10 +40,11 @@
       align-items: center;
       width: 100%;
       max-width: 400px;
-      padding: 10px 16px;
+      padding: 8px 12px;
       background: rgba(255,255,255,0.08);
       border-radius: 12px;
       color: #fff;
+      gap: 2px;
     }
 
     .hud-item {
@@ -61,13 +62,41 @@
     }
 
     .hud-value {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       background: linear-gradient(135deg, #fbbf24, #f59e0b);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+
+    /* Multiplier value gets a purple tint */
+    #mult-display {
+      background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Restart icon button inside HUD */
+    .hud-icon-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 8px;
+      color: rgba(255,255,255,0.7);
+      font-size: 16px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .hud-icon-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .hud-icon-btn:active { transform: scale(0.88); }
 
     /* ── Grid ── */
     #grid-container {
@@ -76,6 +105,7 @@
       padding: 6px;
       border: 2px solid rgba(255,255,255,0.1);
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      transition: box-shadow 0.15s;
     }
 
     #grid {
@@ -90,26 +120,25 @@
       aspect-ratio: 1;
       background: rgba(255,255,255,0.05);
       border-radius: 4px;
-      transition: background-color 0.1s;
     }
 
     .cell.filled {
       box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2);
     }
 
-    /* Placement preview - piece will go here (purple dashed) */
+    /* Placement preview – valid (purple dashed) */
     .cell.preview {
       background: rgba(124, 58, 237, 0.45) !important;
       border: 2px dashed rgba(167, 139, 250, 0.9) !important;
     }
 
-    /* Invalid placement */
+    /* Invalid placement (red dashed) */
     .cell.preview-invalid {
       background: rgba(239, 68, 68, 0.4) !important;
       border: 2px dashed rgba(239, 68, 68, 0.8) !important;
     }
 
-    /* Row/column that WILL be cleared – gold highlight */
+    /* Row/col that WILL be cleared – gold highlight */
     .cell.preview-will-clear {
       background: rgba(251, 191, 36, 0.55) !important;
       border: 2px solid rgba(251, 191, 36, 1) !important;
@@ -128,9 +157,19 @@
     }
 
     @keyframes clear-pulse {
-      0%   { transform: scale(1);   opacity: 1; }
+      0%   { transform: scale(1);    opacity: 1; }
       40%  { transform: scale(1.15); opacity: 0.9; }
-      100% { transform: scale(0);   opacity: 0; }
+      100% { transform: scale(0);    opacity: 0; }
+    }
+
+    /* Board-wipe flash on grid container */
+    @keyframes wipe-flash {
+      0%   { box-shadow: 0 0  0px rgba(255,255,200,0),   0 8px 32px rgba(0,0,0,0.3); }
+      40%  { box-shadow: 0 0 60px rgba(255,255,180,0.85), 0 8px 32px rgba(0,0,0,0.3); }
+      100% { box-shadow: 0 0  0px rgba(255,255,200,0),   0 8px 32px rgba(0,0,0,0.3); }
+    }
+    #grid-container.wipe-flash {
+      animation: wipe-flash 0.65s ease-out forwards;
     }
 
     /* ── Pieces tray ── */
@@ -154,7 +193,7 @@
       min-width: 80px;
       min-height: 80px;
       cursor: grab;
-      transition: transform 0.2s, opacity 0.2s;
+      transition: transform 0.2s, opacity 0.2s, background 0.2s;
       border-radius: 8px;
     }
 
@@ -225,7 +264,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       letter-spacing: 2px;
     }
 
@@ -240,18 +279,65 @@
     .score-display {
       font-size: clamp(22px, 6vw, 34px);
       color: #fbbf24;
-      margin: 14px 0 4px;
+      margin: 10px 0 4px;
       font-weight: bold;
     }
 
     .high-score {
       font-size: 13px;
       color: rgba(255,255,255,0.6);
-      margin-bottom: 18px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Difficulty selector ── */
+    #difficulty-select {
+      margin: 10px 0 6px;
+    }
+
+    .diff-label {
+      font-size: 11px !important;
+      color: rgba(255,255,255,0.45) !important;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px !important;
+    }
+
+    .diff-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .diff-btn {
+      padding: 7px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 1px;
+    }
+    .diff-btn:hover {
+      border-color: rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.8);
+    }
+    .diff-btn.active[data-diff="easy"] {
+      border-color: #22c55e; color: #22c55e;
+      background: rgba(34,197,94,0.12);
+    }
+    .diff-btn.active[data-diff="medium"] {
+      border-color: #fbbf24; color: #fbbf24;
+      background: rgba(251,191,36,0.12);
+    }
+    .diff-btn.active[data-diff="hard"] {
+      border-color: #ef4444; color: #ef4444;
+      background: rgba(239,68,68,0.12);
     }
 
     #startBtn {
-      margin-top: 18px;
+      margin-top: 14px;
       padding: 15px 46px;
       font-size: clamp(15px, 4vw, 21px);
       font-weight: 700;
@@ -264,7 +350,6 @@
       box-shadow: 0 4px 20px rgba(124,58,237,0.5);
       transition: transform 0.1s, box-shadow 0.1s;
     }
-
     #startBtn:active {
       transform: scale(0.96);
       box-shadow: 0 2px 10px rgba(124,58,237,0.4);
@@ -273,7 +358,7 @@
     /* ── Notification banner ── */
     #notification {
       position: fixed;
-      top: 80px;
+      top: 76px;
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
       background: rgba(251, 191, 36, 0.95);
@@ -286,8 +371,8 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.25s, transform 0.25s;
+      white-space: nowrap;
     }
-
     #notification.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
@@ -311,6 +396,47 @@
       100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
     }
 
+    /* ── Debug panel ── */
+    #debug-btn {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 50;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px;
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      padding: 0;
+    }
+    #debug-btn:hover { color: rgba(255,255,255,0.75); background: rgba(0,0,0,0.6); }
+    #debug-btn.active { color: #a78bfa; border-color: #a78bfa; }
+
+    #debug-panel {
+      position: fixed;
+      bottom: 42px;
+      right: 10px;
+      z-index: 50;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.7;
+      min-width: 100px;
+    }
+    #debug-panel span { display: block; }
+    #fps-display { color: #86efac; }
+
     /* ── Block colors ── */
     .color-red    { background: linear-gradient(135deg, #ef4444, #dc2626); }
     .color-orange { background: linear-gradient(135deg, #f97316, #ea580c); }
@@ -326,6 +452,7 @@
 </head>
 <body>
   <div id="game-container">
+    <!-- HUD -->
     <div id="hud">
       <div class="hud-item">
         <span class="hud-label">Score</span>
@@ -336,19 +463,22 @@
         <span class="hud-value" id="best-display">0</span>
       </div>
       <div class="hud-item">
-        <span class="hud-label">Lines</span>
-        <span class="hud-value" id="lines-display">0</span>
+        <span class="hud-label">Mult</span>
+        <span class="hud-value" id="mult-display">×1</span>
       </div>
       <div class="hud-item">
         <span class="hud-label">Round</span>
         <span class="hud-value" id="round-display">1</span>
       </div>
+      <button id="restart-btn" class="hud-icon-btn hidden" title="Restart game">↺</button>
     </div>
 
+    <!-- Board -->
     <div id="grid-container">
       <div id="grid"></div>
     </div>
 
+    <!-- Piece tray -->
     <div id="pieces-container"></div>
   </div>
 
@@ -358,14 +488,34 @@
     <p id="overlay-msg">Place pieces to fill rows &amp; columns.<br>Full lines vanish — chase the high score!</p>
     <div id="final-score" class="score-display hidden"></div>
     <div id="high-score-msg" class="high-score hidden"></div>
+
+    <!-- Difficulty selector -->
+    <div id="difficulty-select">
+      <p class="diff-label">Difficulty</p>
+      <div class="diff-buttons">
+        <button class="diff-btn active" data-diff="easy">EASY</button>
+        <button class="diff-btn" data-diff="medium">MEDIUM</button>
+        <button class="diff-btn" data-diff="hard">HARD</button>
+      </div>
+    </div>
+
     <button id="startBtn">PLAY</button>
   </div>
 
-  <!-- Floating drag ghost -->
+  <!-- Drag ghost -->
   <div id="drag-preview" class="hidden"></div>
 
   <!-- Notification banner -->
   <div id="notification"></div>
+
+  <!-- Debug -->
+  <button id="debug-btn" title="Debug settings">⚙</button>
+  <div id="debug-panel" class="hidden">
+    <span id="fps-display">FPS: --</span>
+    <span id="debug-diff">Mode: Easy</span>
+    <span id="debug-chance">HardP: 0%</span>
+    <span id="debug-mult">Mult: ×1</span>
+  </div>
 
   <script>
   (() => {
@@ -375,96 +525,131 @@
     // CONFIGURATION
     // ═══════════════════════════════════════════════════════════════
     const GRID_SIZE = 8;
-    const COLORS = ['red','orange','yellow','green','cyan','blue','purple','pink'];
-
-    // Cell size adapts to screen (max 400px container)
+    const COLORS    = ['red','orange','yellow','green','cyan','blue','purple','pink'];
     const CELL_SIZE = Math.min(40, (Math.min(window.innerWidth, 400) - 40) / GRID_SIZE);
-
-    // Drag ghost offset: piece appears above finger so you can see the grid
     const DRAG_OFFSET_Y = 70;
 
-    // All available piece shapes (row = [col, row] offsets from top-left)
+    // Each piece has: shape (col,row offsets), name, size, pts (placement points)
+    // pts reflect shape complexity/difficulty: larger & trickier shapes score more.
     const PIECES = [
       // ─ Singles ─
-      { shape: [[0,0]], name: 'dot', size: 1 },
+      { shape: [[0,0]], name: 'dot', size: 1, pts: 5 },
 
       // ─ Dominoes ─
-      { shape: [[0,0],[1,0]], name: 'h2', size: 2 },
-      { shape: [[0,0],[0,1]], name: 'v2', size: 2 },
+      { shape: [[0,0],[1,0]], name: 'h2', size: 2, pts: 10 },
+      { shape: [[0,0],[0,1]], name: 'v2', size: 2, pts: 10 },
 
       // ─ Trominoes ─
-      { shape: [[0,0],[1,0],[2,0]], name: 'h3', size: 3 },
-      { shape: [[0,0],[0,1],[0,2]], name: 'v3', size: 3 },
-      { shape: [[0,0],[1,0],[0,1]], name: 'L3a', size: 3 },
-      { shape: [[0,0],[1,0],[1,1]], name: 'L3b', size: 3 },
-      { shape: [[0,1],[1,0],[1,1]], name: 'L3c', size: 3 },
-      { shape: [[0,0],[0,1],[1,1]], name: 'L3d', size: 3 },
+      { shape: [[0,0],[1,0],[2,0]], name: 'h3',  size: 3, pts: 15 },
+      { shape: [[0,0],[0,1],[0,2]], name: 'v3',  size: 3, pts: 15 },
+      { shape: [[0,0],[1,0],[0,1]], name: 'L3a', size: 3, pts: 18 },
+      { shape: [[0,0],[1,0],[1,1]], name: 'L3b', size: 3, pts: 18 },
+      { shape: [[0,1],[1,0],[1,1]], name: 'L3c', size: 3, pts: 18 },
+      { shape: [[0,0],[0,1],[1,1]], name: 'L3d', size: 3, pts: 18 },
 
-      // ─ Tetrominoes (all 7 Tetris shapes + flips) ─
-      { shape: [[0,0],[1,0],[2,0],[3,0]], name: 'I-h', size: 4 },
-      { shape: [[0,0],[0,1],[0,2],[0,3]], name: 'I-v', size: 4 },
-      { shape: [[0,0],[1,0],[0,1],[1,1]], name: 'O',   size: 4 },
-      { shape: [[0,0],[1,0],[2,0],[1,1]], name: 'T-d',  size: 4 },
-      { shape: [[1,0],[0,1],[1,1],[2,1]], name: 'T-u',  size: 4 },
-      { shape: [[0,0],[0,1],[0,2],[1,1]], name: 'T-r',  size: 4 },
-      { shape: [[1,0],[0,1],[1,1],[1,2]], name: 'T-l',  size: 4 },
-      { shape: [[0,0],[1,0],[2,0],[0,1]], name: 'L-a',  size: 4 },
-      { shape: [[0,0],[1,0],[2,0],[2,1]], name: 'J-a',  size: 4 },
-      { shape: [[0,0],[0,1],[0,2],[1,2]], name: 'L-b',  size: 4 },
-      { shape: [[1,0],[1,1],[0,2],[1,2]], name: 'J-b',  size: 4 },
-      { shape: [[0,0],[1,0],[1,1],[2,1]], name: 'S-h',  size: 4 },
-      { shape: [[1,0],[2,0],[0,1],[1,1]], name: 'Z-h',  size: 4 },
-      { shape: [[1,0],[0,1],[1,1],[0,2]], name: 'S-v',  size: 4 },
-      { shape: [[0,0],[0,1],[1,1],[1,2]], name: 'Z-v',  size: 4 },
+      // ─ Tetrominoes ─
+      { shape: [[0,0],[1,0],[2,0],[3,0]], name: 'I-h',  size: 4, pts: 20 },
+      { shape: [[0,0],[0,1],[0,2],[0,3]], name: 'I-v',  size: 4, pts: 20 },
+      { shape: [[0,0],[1,0],[0,1],[1,1]], name: 'O',    size: 4, pts: 22 },
+      { shape: [[0,0],[1,0],[2,0],[1,1]], name: 'T-d',  size: 4, pts: 25 },
+      { shape: [[1,0],[0,1],[1,1],[2,1]], name: 'T-u',  size: 4, pts: 25 },
+      { shape: [[0,0],[0,1],[0,2],[1,1]], name: 'T-r',  size: 4, pts: 25 },
+      { shape: [[1,0],[0,1],[1,1],[1,2]], name: 'T-l',  size: 4, pts: 25 },
+      { shape: [[0,0],[1,0],[2,0],[0,1]], name: 'L-a',  size: 4, pts: 22 },
+      { shape: [[0,0],[1,0],[2,0],[2,1]], name: 'J-a',  size: 4, pts: 22 },
+      { shape: [[0,0],[0,1],[0,2],[1,2]], name: 'L-b',  size: 4, pts: 22 },
+      { shape: [[1,0],[1,1],[0,2],[1,2]], name: 'J-b',  size: 4, pts: 22 },
+      { shape: [[0,0],[1,0],[1,1],[2,1]], name: 'S-h',  size: 4, pts: 28 },
+      { shape: [[1,0],[2,0],[0,1],[1,1]], name: 'Z-h',  size: 4, pts: 28 },
+      { shape: [[1,0],[0,1],[1,1],[0,2]], name: 'S-v',  size: 4, pts: 28 },
+      { shape: [[0,0],[0,1],[1,1],[1,2]], name: 'Z-v',  size: 4, pts: 28 },
 
-      // ─ Pentominoes (selected) ─
-      { shape: [[0,0],[1,0],[2,0],[3,0],[4,0]], name: 'I5-h', size: 5 },
-      { shape: [[0,0],[0,1],[0,2],[0,3],[0,4]], name: 'I5-v', size: 5 },
-      { shape: [[0,0],[1,0],[2,0],[0,1],[0,2]], name: 'L5-a', size: 5 },
-      { shape: [[0,0],[1,0],[2,0],[2,1],[2,2]], name: 'L5-b', size: 5 },
-      { shape: [[0,0],[0,1],[0,2],[1,2],[2,2]], name: 'L5-c', size: 5 },
-      { shape: [[2,0],[2,1],[0,2],[1,2],[2,2]], name: 'L5-d', size: 5 },
-      { shape: [[0,0],[1,0],[2,0],[1,1],[1,2]], name: 'T5',   size: 5 },
-      { shape: [[0,0],[1,0],[1,1],[1,2],[2,2]], name: 'S5',   size: 5 },
-      { shape: [[1,0],[2,0],[0,1],[1,1],[0,2]], name: 'Z5',   size: 5 },
+      // ─ Pentominoes ─
+      { shape: [[0,0],[1,0],[2,0],[3,0],[4,0]], name: 'I5-h', size: 5, pts: 30 },
+      { shape: [[0,0],[0,1],[0,2],[0,3],[0,4]], name: 'I5-v', size: 5, pts: 30 },
+      { shape: [[0,0],[1,0],[2,0],[0,1],[0,2]], name: 'L5-a', size: 5, pts: 35 },
+      { shape: [[0,0],[1,0],[2,0],[2,1],[2,2]], name: 'L5-b', size: 5, pts: 35 },
+      { shape: [[0,0],[0,1],[0,2],[1,2],[2,2]], name: 'L5-c', size: 5, pts: 35 },
+      { shape: [[2,0],[2,1],[0,2],[1,2],[2,2]], name: 'L5-d', size: 5, pts: 35 },
+      { shape: [[0,0],[1,0],[2,0],[1,1],[1,2]], name: 'T5',   size: 5, pts: 38 },
+      { shape: [[0,0],[1,0],[1,1],[1,2],[2,2]], name: 'S5',   size: 5, pts: 40 },
+      { shape: [[1,0],[2,0],[0,1],[1,1],[0,2]], name: 'Z5',   size: 5, pts: 40 },
 
       // ─ Rectangles ─
-      { shape: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]], name: '3x2', size: 6 },
-      { shape: [[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]], name: '2x3', size: 6 },
+      { shape: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]], name: '3x2', size: 6, pts: 45 },
+      { shape: [[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]], name: '2x3', size: 6, pts: 45 },
 
-      // ─ 2×2 + 3×3 squares ─
-      { shape: [[0,0],[1,0],[0,1],[1,1]], name: '2x2', size: 4 },
-      { shape: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]], name: '3x3', size: 9 },
+      // ─ Squares ─
+      { shape: [[0,0],[1,0],[0,1],[1,1]], name: '2x2', size: 4, pts: 22 },
+      { shape: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]], name: '3x3', size: 9, pts: 70 },
     ];
+
+    // Names considered "hard" pieces (large or tricky shapes with fewer fit positions)
+    const HARD_PIECE_NAMES = new Set([
+      'I5-h','I5-v','L5-a','L5-b','L5-c','L5-d','T5','S5','Z5',
+      '3x2','2x3','3x3','I-h','I-v','S-h','Z-h','S-v','Z-v',
+      'T-d','T-u','T-r','T-l',
+    ]);
 
     // ═══════════════════════════════════════════════════════════════
     // GAME STATE
     // ═══════════════════════════════════════════════════════════════
-    let grid = [];
+    let grid          = [];
     let currentPieces = [];
-    let score = 0;
-    let linesCleared = 0;
-    let roundCount = 0;
-    let highScore = parseInt(localStorage.getItem('blockBreakerHS') || '0');
-    let gameState = 'idle'; // idle | playing | over
-    let draggedPiece = null;
+    let score         = 0;
+    let linesCleared  = 0;
+    let roundCount    = 0;
+    let gameState     = 'idle'; // idle | playing | over
+    let draggedPiece  = null;
+
+    // Difficulty
+    let difficulty     = 'easy'; // 'easy' | 'medium' | 'hard'
+    let hardChance     = 0.05;   // probability a hard slot gets a hard piece; grows each round
+    let baseMultiplier = 1;      // +1 each board wipe; applied to line scoring
+    let boardWipeCount = 0;
+
+    // Per-difficulty high score keys
+    const HS_KEY = { easy: 'bbHS_easy', medium: 'bbHS_medium', hard: 'bbHS_hard' };
+    const getHS  = () => parseInt(localStorage.getItem(HS_KEY[difficulty]) || '0');
+    const saveHS = v  => localStorage.setItem(HS_KEY[difficulty], v);
+
+    // Performance: O(1) cell lookup + tracked preview set to avoid full scan
+    let cellCache    = [];       // [r][c] → DOM element
+    let previewCells = new Set(); // elements currently bearing a preview class
+
+    // RAF throttle for drag preview
+    let previewRafId = null;
+    let pendingPX    = 0;
+    let pendingPY    = 0;
+
+    // FPS / debug
+    let debugVisible  = false;
+    let fpsTimestamps = [];
 
     // ═══════════════════════════════════════════════════════════════
     // DOM REFS
     // ═══════════════════════════════════════════════════════════════
     const gridEl         = document.getElementById('grid');
+    const gridContEl     = document.getElementById('grid-container');
     const piecesEl       = document.getElementById('pieces-container');
     const overlayEl      = document.getElementById('overlay');
     const startBtn       = document.getElementById('startBtn');
+    const restartBtn     = document.getElementById('restart-btn');
     const scoreEl        = document.getElementById('score-display');
     const bestEl         = document.getElementById('best-display');
-    const linesEl        = document.getElementById('lines-display');
+    const multEl         = document.getElementById('mult-display');
     const roundEl        = document.getElementById('round-display');
     const dragPreviewEl  = document.getElementById('drag-preview');
     const finalScoreEl   = document.getElementById('final-score');
     const highScoreMsgEl = document.getElementById('high-score-msg');
     const overlayMsgEl   = document.getElementById('overlay-msg');
     const notifEl        = document.getElementById('notification');
+    const debugBtn       = document.getElementById('debug-btn');
+    const debugPanelEl   = document.getElementById('debug-panel');
+    const fpsEl          = document.getElementById('fps-display');
+    const debugDiffEl    = document.getElementById('debug-diff');
+    const debugChanceEl  = document.getElementById('debug-chance');
+    const debugMultEl    = document.getElementById('debug-mult');
 
     // ═══════════════════════════════════════════════════════════════
     // GRID SETUP
@@ -472,43 +657,42 @@
     function buildGridDOM() {
       gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`;
       gridEl.innerHTML = '';
+      cellCache = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.dataset.c = c;
-          cell.dataset.r = r;
+          cell.className    = 'cell';
           cell.style.width  = `${CELL_SIZE}px`;
           cell.style.height = `${CELL_SIZE}px`;
+          cellCache[r][c]   = cell;
           gridEl.appendChild(cell);
         }
       }
     }
 
+    // O(1) lookup via cache
     function getCell(c, r) {
       if (c < 0 || c >= GRID_SIZE || r < 0 || r >= GRID_SIZE) return null;
-      return gridEl.querySelector(`[data-c="${c}"][data-r="${r}"]`);
+      return cellCache[r][c];
     }
 
     function renderGrid() {
-      gridEl.querySelectorAll('.cell').forEach(el => {
-        const c = +el.dataset.c, r = +el.dataset.r;
-        const color = grid[r][c];
-        el.className = 'cell';
-        if (color) el.classList.add('filled', `color-${color}`);
-      });
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const el    = cellCache[r][c];
+          const color = grid[r][c];
+          el.className = 'cell';
+          if (color) el.classList.add('filled', `color-${color}`);
+        }
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════
     // INITIAL GRID GENERATION
-    // Fills ~20-28% of cells with clusters shaped like small pieces,
-    // so there are always natural near-complete lines to chase.
-    // Guarantees no row/column starts complete (no free clears at turn 1).
     // ═══════════════════════════════════════════════════════════════
     function initGrid() {
       grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 
-      // Small shapes used for seeding clusters
       const seedShapes = [
         [[0,0],[1,0]],
         [[0,0],[0,1]],
@@ -522,7 +706,6 @@
         [[0,0],[1,0],[0,1],[1,1]],
       ];
 
-      // Place 4-6 random clusters
       const numClusters = 4 + Math.floor(Math.random() * 3);
       for (let i = 0; i < numClusters; i++) {
         const shape = seedShapes[Math.floor(Math.random() * seedShapes.length)];
@@ -535,24 +718,17 @@
             const nc = sc + dc, nr = sr + dr;
             return nc >= 0 && nc < GRID_SIZE && nr >= 0 && nr < GRID_SIZE && !grid[nr][nc];
           });
-          if (ok) {
-            shape.forEach(([dc, dr]) => { grid[sr + dr][sc + dc] = color; });
-            placed = true;
-          }
+          if (ok) { shape.forEach(([dc, dr]) => { grid[sr + dr][sc + dc] = color; }); placed = true; }
         }
       }
 
-      // Guarantee no row/column is already complete
-      for (let r = 0; r < GRID_SIZE; r++) {
-        if (grid[r].every(v => v !== null)) {
+      // Guarantee no row/column starts complete
+      for (let r = 0; r < GRID_SIZE; r++)
+        if (grid[r].every(v => v !== null))
           grid[r][Math.floor(Math.random() * GRID_SIZE)] = null;
-        }
-      }
-      for (let c = 0; c < GRID_SIZE; c++) {
-        if (grid.every(row => row[c] !== null)) {
+      for (let c = 0; c < GRID_SIZE; c++)
+        if (grid.every(row => row[c] !== null))
           grid[Math.floor(Math.random() * GRID_SIZE)][c] = null;
-        }
-      }
 
       renderGrid();
     }
@@ -570,19 +746,18 @@
 
     // ═══════════════════════════════════════════════════════════════
     // PIECE GENERATION
-    // Adapts piece sizes to board fullness:
-    //   - Sparse board  → larger pieces encouraged
-    //   - Full board    → smaller pieces favoured
     // ═══════════════════════════════════════════════════════════════
     function buildPiece(template) {
       let maxC = 0, maxR = 0;
       template.shape.forEach(([c, r]) => { maxC = Math.max(maxC, c); maxR = Math.max(maxR, r); });
       return {
-        shape: template.shape,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        shape:  template.shape,
+        name:   template.name,
+        color:  COLORS[Math.floor(Math.random() * COLORS.length)],
         width:  maxC + 1,
         height: maxR + 1,
-        used: false,
+        pts:    template.pts,
+        used:   false,
       };
     }
 
@@ -590,23 +765,50 @@
       const small  = PIECES.filter(p => p.size <= 3);
       const medium = PIECES.filter(p => p.size >= 3 && p.size <= 5);
       const large  = PIECES.filter(p => p.size >= 5);
-
       let pool;
-      if (fullness > 0.62)      pool = [...small, ...small, ...medium];
+      if      (fullness > 0.62) pool = [...small, ...small, ...medium];
       else if (fullness > 0.40) pool = [...small, ...medium, ...medium];
       else                      pool = [...small, ...medium, ...medium, ...large];
-
       return buildPiece(pool[Math.floor(Math.random() * pool.length)]);
     }
 
+    // Generates a piece that is harder to fit (fewer valid positions on the board).
+    // Falls back to a normal piece if nothing fits after several tries.
+    function generateHardPiece(fullness) {
+      const hardPool = PIECES.filter(p => HARD_PIECE_NAMES.has(p.name));
+      for (let i = 0; i < 15; i++) {
+        const template = hardPool[Math.floor(Math.random() * hardPool.length)];
+        const piece    = buildPiece(template);
+        if (canPieceFitAnywhere(piece)) return piece;
+      }
+      return generatePiece(fullness); // fallback
+    }
+
+    // Generates 3 pieces; in medium/hard some slots may produce hard pieces
+    // based on the current hardChance probability.
     function generatePieceSet() {
-      const full = boardFullness();
-      let attempts = 0;
+      const full      = boardFullness();
+      const hardSlots = difficulty === 'hard' ? 2 : difficulty === 'medium' ? 1 : 0;
+      let attempts    = 0;
       do {
-        currentPieces = [generatePiece(full), generatePiece(full), generatePiece(full)];
+        currentPieces = [];
+        for (let i = 0; i < 3; i++) {
+          const isHardSlot = i < hardSlots;
+          if (isHardSlot && Math.random() < hardChance) {
+            currentPieces.push(generateHardPiece(full));
+          } else {
+            currentPieces.push(generatePiece(full));
+          }
+        }
         attempts++;
       } while (attempts < 20 && !currentPieces.some(p => canPieceFitAnywhere(p)));
       renderPieces();
+    }
+
+    // Called at the start of each round; increases hard-piece probability
+    function updateHardChance() {
+      if      (difficulty === 'medium') hardChance = Math.min(0.50, hardChance + 0.01);
+      else if (difficulty === 'hard')   hardChance = Math.min(0.80, hardChance + 0.03);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -615,19 +817,17 @@
     function renderPieces() {
       piecesEl.innerHTML = '';
       currentPieces.forEach((piece, idx) => {
-        const slot = document.createElement('div');
-        slot.className = 'piece-slot';
+        const slot  = document.createElement('div');
+        slot.className     = 'piece-slot';
         slot.dataset.index = idx;
 
-        if (piece.used || !canPieceFitAnywhere(piece)) {
-          slot.classList.add('disabled');
-        }
+        const canFit = !piece.used && canPieceFitAnywhere(piece);
+        if (piece.used || !canFit) slot.classList.add('disabled');
 
         if (!piece.used) {
           const pg = document.createElement('div');
           pg.className = 'piece-grid';
           pg.style.gridTemplateColumns = `repeat(${piece.width}, 18px)`;
-
           for (let r = 0; r < piece.height; r++) {
             for (let c = 0; c < piece.width; c++) {
               const cell = document.createElement('div');
@@ -639,10 +839,12 @@
           }
           slot.appendChild(pg);
 
-          slot.addEventListener('mousedown', e => startDrag(e, idx));
-          slot.addEventListener('touchstart', e => startDrag(e, idx), { passive: false });
+          // Only attach drag listeners if the piece can actually be placed
+          if (canFit) {
+            slot.addEventListener('mousedown', e => startDrag(e, idx));
+            slot.addEventListener('touchstart', e => startDrag(e, idx), { passive: false });
+          }
         }
-
         piecesEl.appendChild(slot);
       });
     }
@@ -659,15 +861,14 @@
       draggedPiece = { piece, index: idx };
       piecesEl.children[idx].classList.add('dragging');
 
-      // Build floating ghost
       buildDragGhost(piece);
       const pos = eventXY(e);
       positionGhost(pos.x, pos.y);
 
-      document.addEventListener('mousemove',  onMove);
-      document.addEventListener('mouseup',    onEnd);
-      document.addEventListener('touchmove',  onMove, { passive: false });
-      document.addEventListener('touchend',   onEnd);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup',   onEnd);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend',  onEnd);
     }
 
     function buildDragGhost(piece) {
@@ -698,15 +899,26 @@
       e.preventDefault();
       const { x, y } = eventXY(e);
       positionGhost(x, y);
-      updateGridPreview(x, y);
+
+      // Throttle grid preview updates to one per animation frame
+      pendingPX = x;
+      pendingPY = y;
+      if (!previewRafId) {
+        previewRafId = requestAnimationFrame(() => {
+          previewRafId = null;
+          updateGridPreview(pendingPX, pendingPY);
+        });
+      }
     }
 
     function onEnd(e) {
       if (!draggedPiece) return;
-      document.removeEventListener('mousemove',  onMove);
-      document.removeEventListener('mouseup',    onEnd);
-      document.removeEventListener('touchmove',  onMove);
-      document.removeEventListener('touchend',   onEnd);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend',  onEnd);
+
+      if (previewRafId) { cancelAnimationFrame(previewRafId); previewRafId = null; }
 
       const { x, y } = eventXY(e);
       tryPlace(x, y);
@@ -725,18 +937,15 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // GRID PREVIEW (hover highlight)
-    // Purple  = placement cells (valid)
-    // Red     = placement cells (invalid / out-of-bounds)
-    // Gold    = any cell in a row/col that would be fully cleared
+    // GRID PREVIEW  (hover highlight while dragging)
     // ═══════════════════════════════════════════════════════════════
     function gridPositionFromXY(clientX, clientY, piece) {
-      const rect     = gridEl.getBoundingClientRect();
-      const cellW    = rect.width  / GRID_SIZE;
-      const cellH    = rect.height / GRID_SIZE;
-      const adjustY  = clientY - DRAG_OFFSET_Y;
-      const col = Math.floor((clientX - rect.left)  / cellW  - piece.width  / 2 + 0.5);
-      const row = Math.floor((adjustY  - rect.top)   / cellH  - piece.height / 2 + 0.5);
+      const rect   = gridEl.getBoundingClientRect();
+      const cellW  = rect.width  / GRID_SIZE;
+      const cellH  = rect.height / GRID_SIZE;
+      const adjY   = clientY - DRAG_OFFSET_Y;
+      const col    = Math.floor((clientX - rect.left) / cellW - piece.width  / 2 + 0.5);
+      const row    = Math.floor((adjY    - rect.top)  / cellH - piece.height / 2 + 0.5);
       return { col, row };
     }
 
@@ -744,20 +953,19 @@
       clearAllPreview();
       if (!draggedPiece) return;
 
-      const piece      = draggedPiece.piece;
+      const piece        = draggedPiece.piece;
       const { col, row } = gridPositionFromXY(clientX, clientY, piece);
-      const canPlace   = canPlacePiece(piece, col, row);
+      const canPlace     = canPlacePiece(piece, col, row);
 
       if (!canPlace) {
-        // Just show red for the cells that are in-bounds
         piece.shape.forEach(([pc, pr]) => {
           const el = getCell(col + pc, row + pr);
-          if (el) el.classList.add('preview-invalid');
+          if (el) { el.classList.add('preview-invalid'); previewCells.add(el); }
         });
         return;
       }
 
-      // Simulate the placement to detect which rows/cols would clear
+      // Simulate placement to detect which rows/cols would clear
       const tmp = grid.map(r => [...r]);
       piece.shape.forEach(([pc, pr]) => { tmp[row + pr][col + pc] = 'sim'; });
 
@@ -768,37 +976,35 @@
       for (let c = 0; c < GRID_SIZE; c++)
         if (tmp.every(r => r[c] !== null)) clearCols.add(c);
 
-      // Gold: full rows
       clearRows.forEach(r => {
         for (let c = 0; c < GRID_SIZE; c++) {
           const el = getCell(c, r);
-          if (el) { el.classList.remove('preview'); el.classList.add('preview-will-clear'); }
+          if (el) { el.classList.remove('preview'); el.classList.add('preview-will-clear'); previewCells.add(el); }
         }
       });
-
-      // Gold: full cols
       clearCols.forEach(c => {
         for (let r = 0; r < GRID_SIZE; r++) {
           const el = getCell(c, r);
-          if (el) { el.classList.remove('preview'); el.classList.add('preview-will-clear'); }
+          if (el) { el.classList.remove('preview'); el.classList.add('preview-will-clear'); previewCells.add(el); }
         }
       });
-
-      // Purple: placement cells that aren't already gold
       piece.shape.forEach(([pc, pr]) => {
         const el = getCell(col + pc, row + pr);
-        if (el && !el.classList.contains('preview-will-clear'))
+        if (el && !el.classList.contains('preview-will-clear')) {
           el.classList.add('preview');
+          previewCells.add(el);
+        }
       });
     }
 
+    // Only touch cells we actually modified – O(changed) not O(64)
     function clearAllPreview() {
-      gridEl.querySelectorAll('.preview, .preview-invalid, .preview-will-clear')
-            .forEach(el => el.classList.remove('preview', 'preview-invalid', 'preview-will-clear'));
+      previewCells.forEach(el => el.classList.remove('preview', 'preview-invalid', 'preview-will-clear'));
+      previewCells.clear();
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // PLACEMENT
+    // PLACEMENT LOGIC
     // ═══════════════════════════════════════════════════════════════
     function canPlacePiece(piece, col, row) {
       return piece.shape.every(([pc, pr]) => {
@@ -815,41 +1021,51 @@
     }
 
     function tryPlace(clientX, clientY) {
-      const piece      = draggedPiece.piece;
+      const piece        = draggedPiece.piece;
       const { col, row } = gridPositionFromXY(clientX, clientY, piece);
       if (!canPlacePiece(piece, col, row)) return;
 
-      // Stamp onto grid
+      // Stamp piece onto grid
       piece.shape.forEach(([pc, pr]) => { grid[row + pr][col + pc] = piece.color; });
       currentPieces[draggedPiece.index].used = true;
       renderGrid();
 
-      // Placement score
-      score += piece.shape.length;
+      // Award piece placement points (complexity-based)
+      score += piece.pts;
       updateHUD();
 
-      // Check & clear lines
+      // Trigger line-clear check
       checkAndClearLines(col, row, piece);
 
-      // If all 3 pieces used, deal next set (with possible obstacle injection)
       if (currentPieces.every(p => p.used)) {
+        // All 3 pieces placed: new round
         roundCount++;
+        updateHardChance();
         updateHUD();
         maybeAddObstacles();
-        setTimeout(generatePieceSet, 200);
+        // Delay new piece set until after clear animation (390 ms) + buffer
+        setTimeout(generatePieceSet, 450);
       } else {
+        // Re-render tray immediately (pre-clear state); will re-render again post-clear
         renderPieces();
       }
 
-      // Game-over check (deferred so animations can start)
-      setTimeout(checkGameOver, 420);
+      setTimeout(checkGameOver, 480);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // LINE CLEARING
+    // LINE CLEARING & SCORING
+    //
+    // Formula: score = 10 × GRID_SIZE × cleared × (baseMultiplier + 0.2×(cleared−1))
+    //   baseMultiplier starts at 1, increments by 1 on each board wipe.
+    //   Example (no board wipe):
+    //     1 line  → 10×8×1×1.0 = 80
+    //     2 lines → 10×8×2×1.2 = 192
+    //     3 lines → 10×8×3×1.4 = 336
+    //   After one board wipe (baseMultiplier = 2):
+    //     2 lines → 10×8×2×2.2 = 352
     // ═══════════════════════════════════════════════════════════════
     function checkAndClearLines(placedCol, placedRow, piece) {
-      // Only check rows/cols touched by the placed piece
       const rowsToCheck = new Set();
       const colsToCheck = new Set();
       piece.shape.forEach(([pc, pr]) => {
@@ -873,6 +1089,7 @@
       });
 
       setTimeout(() => {
+        // Clear cells from grid data
         toFlash.forEach(key => {
           const [c, r] = key.split(',').map(Number);
           grid[r][c] = null;
@@ -881,22 +1098,40 @@
         const cleared = rowsToClear.length + colsToClear.length;
         linesCleared += cleared;
 
-        // Score: 8 cells × 10 pts × lines × combo multiplier
-        const combo     = cleared > 1 ? cleared : 1;
-        const lineScore = cleared * GRID_SIZE * 10 * combo;
+        // Scoring: base × combo with board-wipe multiplier
+        const comboBonus = 0.2 * Math.max(0, cleared - 1);
+        const lineMult   = baseMultiplier + comboBonus;
+        const lineScore  = Math.round(10 * GRID_SIZE * cleared * lineMult);
         score += lineScore;
 
-        updateHUD();
         renderGrid();
+        updateHUD();
 
-        if (cleared >= 2) showScorePopup(`+${lineScore} COMBO!`);
+        // KEY FIX: re-check which pieces can now be placed after the board opened up
+        renderPieces();
+
+        // Board-wipe detection (entire grid empty)
+        const boardEmpty = grid.every(row => row.every(v => v === null));
+        if (boardEmpty) {
+          baseMultiplier++;
+          boardWipeCount++;
+          // Visual flash on grid container
+          gridContEl.classList.remove('wipe-flash');
+          void gridContEl.offsetWidth; // force reflow so animation restarts
+          gridContEl.classList.add('wipe-flash');
+          setTimeout(() => gridContEl.classList.remove('wipe-flash'), 700);
+          showNotification(`✨ BOARD WIPE!  Mult ×${baseMultiplier}`);
+          updateHUD();
+          if (debugVisible) updateDebugPanel();
+        }
+
+        if (cleared === 1) showScorePopup(`+${lineScore}`);
+        else               showScorePopup(`+${lineScore} COMBO!`);
       }, 390);
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // DIFFICULTY ESCALATION
-    // Every 5 rounds inject a small cluster of obstacle blocks.
-    // Checks don't exceed 70% fill and ensures remaining pieces still fit.
+    // DIFFICULTY ESCALATION – obstacle injection every 5 rounds
     // ═══════════════════════════════════════════════════════════════
     function maybeAddObstacles() {
       if (roundCount % 5 !== 0) return;
@@ -910,8 +1145,7 @@
         const r = Math.floor(Math.random() * GRID_SIZE);
         if (!grid[r][c]) { grid[r][c] = color; placed++; }
       }
-
-      // Prevent accidentally completing a row/col (would clear for free)
+      // Prevent accidental instant-clears
       for (let r = 0; r < GRID_SIZE; r++)
         if (grid[r].every(v => v !== null))
           grid[r][Math.floor(Math.random() * GRID_SIZE)] = null;
@@ -927,18 +1161,23 @@
     // GAME FLOW
     // ═══════════════════════════════════════════════════════════════
     function startGame() {
-      gameState    = 'playing';
-      score        = 0;
-      linesCleared = 0;
-      roundCount   = 1;
+      gameState      = 'playing';
+      score          = 0;
+      linesCleared   = 0;
+      roundCount     = 1;
+      baseMultiplier = 1;
+      boardWipeCount = 0;
+      hardChance     = 0.05;
 
       overlayEl.classList.add('hidden');
       finalScoreEl.classList.add('hidden');
       highScoreMsgEl.classList.add('hidden');
+      restartBtn.classList.remove('hidden');
 
       initGrid();
       generatePieceSet();
       updateHUD();
+      if (debugVisible) updateDebugPanel();
     }
 
     function checkGameOver() {
@@ -949,36 +1188,39 @@
 
     function endGame() {
       gameState = 'over';
+      restartBtn.classList.add('hidden');
 
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('blockBreakerHS', highScore);
-        bestEl.textContent = highScore;
+      const hs = getHS();
+      if (score > hs) {
+        saveHS(score);
+        bestEl.textContent       = score;
         highScoreMsgEl.textContent = '🏆 NEW HIGH SCORE!';
         highScoreMsgEl.classList.remove('hidden');
       }
 
-      overlayMsgEl.textContent = 'No more moves available!';
-      finalScoreEl.textContent = `Score: ${score}`;
+      overlayMsgEl.textContent     = 'No more moves available!';
+      finalScoreEl.textContent     = `Score: ${score}`;
       finalScoreEl.classList.remove('hidden');
-      startBtn.textContent = 'PLAY AGAIN';
+      startBtn.textContent         = 'PLAY AGAIN';
       overlayEl.classList.remove('hidden');
     }
 
     function updateHUD() {
       scoreEl.textContent = score;
-      bestEl.textContent  = Math.max(score, highScore);
-      linesEl.textContent = linesCleared;
+      bestEl.textContent  = Math.max(score, getHS());
+      multEl.textContent  = `×${baseMultiplier}`;
       roundEl.textContent = roundCount;
     }
 
     // ═══════════════════════════════════════════════════════════════
     // UI HELPERS
     // ═══════════════════════════════════════════════════════════════
+    let notifTimer = null;
     function showNotification(msg) {
       notifEl.textContent = msg;
       notifEl.classList.add('show');
-      setTimeout(() => notifEl.classList.remove('show'), 2200);
+      if (notifTimer) clearTimeout(notifTimer);
+      notifTimer = setTimeout(() => notifEl.classList.remove('show'), 2200);
     }
 
     function showScorePopup(msg) {
@@ -986,7 +1228,7 @@
       const popup = document.createElement('div');
       popup.className   = 'score-popup';
       popup.textContent = msg;
-      popup.style.left  = `${rect.left + rect.width / 2}px`;
+      popup.style.left  = `${rect.left + rect.width  / 2}px`;
       popup.style.top   = `${rect.top  + rect.height / 2}px`;
       popup.style.transform = 'translate(-50%, -50%)';
       document.body.appendChild(popup);
@@ -994,12 +1236,64 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // DEBUG / FPS COUNTER
+    // ═══════════════════════════════════════════════════════════════
+    function updateDebugPanel() {
+      const pct = (hardChance * 100).toFixed(0);
+      debugDiffEl.textContent  = `Mode: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+      debugChanceEl.textContent = `HardP: ${pct}%`;
+      debugMultEl.textContent  = `Mult: ×${baseMultiplier}`;
+    }
+
+    function startFPSLoop() {
+      function frame(ts) {
+        if (debugVisible) {
+          fpsTimestamps.push(ts);
+          if (fpsTimestamps.length > 60) fpsTimestamps.shift();
+          if (fpsTimestamps.length >= 2) {
+            const elapsed = fpsTimestamps[fpsTimestamps.length - 1] - fpsTimestamps[0];
+            const fps     = Math.round(1000 * (fpsTimestamps.length - 1) / elapsed);
+            fpsEl.textContent = `FPS: ${fps}`;
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function toggleDebug() {
+      debugVisible = !debugVisible;
+      debugPanelEl.classList.toggle('hidden', !debugVisible);
+      debugBtn.classList.toggle('active', debugVisible);
+      if (debugVisible) {
+        fpsTimestamps = [];
+        updateDebugPanel();
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // BOOTSTRAP
     // ═══════════════════════════════════════════════════════════════
     function init() {
       buildGridDOM();
-      bestEl.textContent = highScore;
-      startBtn.addEventListener('click', startGame);
+      bestEl.textContent = getHS();
+
+      startBtn.addEventListener('click',   startGame);
+      restartBtn.addEventListener('click', startGame);
+      debugBtn.addEventListener('click',   toggleDebug);
+
+      // Difficulty buttons
+      document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          difficulty = btn.dataset.diff;
+          document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          bestEl.textContent = getHS();
+          if (debugVisible) updateDebugPanel();
+        });
+      });
+
+      startFPSLoop();
     }
 
     init();
