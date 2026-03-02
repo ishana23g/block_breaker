@@ -39,7 +39,7 @@
       justify-content: space-between;
       align-items: center;
       width: 100%;
-      max-width: 400px;
+      max-width: 440px;
       padding: 8px 12px;
       background: rgba(255,255,255,0.08);
       border-radius: 12px;
@@ -122,6 +122,46 @@
     /* Gold tint once undo has been used — reminds player score won't be recorded */
     #undo-btn.undo-used { border-color: rgba(251,191,36,0.45); color: rgba(251,191,36,0.85); background: rgba(251,191,36,0.08); }
 
+    /* ── Leaderboard ── */
+    #leaderboard-panel { width: 100%; max-width: 340px; margin: 8px 0; }
+    #lb-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    #lb-table th, #lb-table td { padding: 5px 8px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+    #lb-table th { color: #a78bfa; font-weight: 700; }
+    #lb-table td { color: #fbbf24; }
+    #lb-table td.zero { color: rgba(255,255,255,0.25); }
+    #lb-btn-row { display: flex; gap: 10px; margin-top: 14px; }
+    #lb-toggle-btn {
+      padding: 15px 20px;
+      font-size: clamp(12px, 3.5vw, 17px);
+      font-weight: 700;
+      background: linear-gradient(135deg, #1e3a5f, #2563eb);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    #lb-toggle-btn:active { transform: scale(0.96); box-shadow: 0 2px 10px rgba(37,99,235,0.3); }
+
+    /* Game-over overlay undo button */
+    #game-over-undo-btn {
+      margin-top: 10px;
+      padding: 10px 28px;
+      font-size: 14px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      box-shadow: 0 3px 14px rgba(109,40,217,0.45);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    #game-over-undo-btn:active { transform: scale(0.96); box-shadow: 0 2px 8px rgba(109,40,217,0.35); }
+
     /* ── Grid ── */
     #grid-container {
       background: rgba(0,0,0,0.3);
@@ -130,6 +170,7 @@
       border: 2px solid rgba(255,255,255,0.1);
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       transition: box-shadow 0.15s;
+      width: fit-content;
     }
 
     #grid {
@@ -205,7 +246,7 @@
       background: rgba(255,255,255,0.05);
       border-radius: 12px;
       width: 100%;
-      max-width: 400px;
+      max-width: 440px;
       min-height: 90px;
     }
 
@@ -313,8 +354,8 @@
       margin-bottom: 8px;
     }
 
-    /* ── Difficulty selector ── */
-    #difficulty-select {
+    /* ── Difficulty / size selectors ── */
+    #difficulty-select, #size-select {
       margin: 10px 0 6px;
     }
 
@@ -359,9 +400,12 @@
       border-color: #ef4444; color: #ef4444;
       background: rgba(239,68,68,0.12);
     }
+    /* Size buttons reuse .diff-btn styles; active state uses cyan */
+    .size-btn { padding: 7px 14px; font-size: 11px; font-weight: 700; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: rgba(255,255,255,0.5); cursor: pointer; transition: all 0.15s; letter-spacing: 1px; }
+    .size-btn:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.8); }
+    .size-btn.active { border-color: #22d3ee; color: #22d3ee; background: rgba(34,211,238,0.12); }
 
     #startBtn {
-      margin-top: 14px;
       padding: 15px 46px;
       font-size: clamp(15px, 4vw, 21px);
       font-weight: 700;
@@ -513,6 +557,7 @@
     <p id="overlay-msg">Place pieces to fill rows &amp; columns.<br>Full lines vanish — chase the high score!</p>
     <div id="final-score" class="score-display hidden"></div>
     <div id="high-score-msg" class="high-score hidden"></div>
+    <button id="game-over-undo-btn" class="hidden">↩ UNDO LAST MOVE</button>
 
     <!-- Difficulty selector -->
     <div id="difficulty-select">
@@ -524,7 +569,26 @@
       </div>
     </div>
 
-    <button id="startBtn">PLAY</button>
+    <!-- Board size selector -->
+    <div id="size-select">
+      <p class="diff-label">Board Size</p>
+      <div class="diff-buttons">
+        <button class="size-btn" data-size="5">5×5</button>
+        <button class="size-btn active" data-size="8">8×8</button>
+        <button class="size-btn" data-size="13">13×13</button>
+        <button class="size-btn" data-size="19">19×19</button>
+      </div>
+    </div>
+
+    <!-- Leaderboard panel (hidden by default, toggled by SCORES button) -->
+    <div id="leaderboard-panel" class="hidden">
+      <table id="lb-table"></table>
+    </div>
+
+    <div id="lb-btn-row">
+      <button id="startBtn">PLAY</button>
+      <button id="lb-toggle-btn">SCORES</button>
+    </div>
   </div>
 
   <!-- Drag ghost -->
@@ -550,9 +614,8 @@
     // ═══════════════════════════════════════════════════════════════
     // CONFIGURATION
     // ═══════════════════════════════════════════════════════════════
-    const GRID_SIZE = 8;
+    let GRID_SIZE   = 8;
     const COLORS    = ['red','orange','yellow','green','cyan','blue','purple','pink'];
-    const CELL_SIZE = Math.min(40, (Math.min(window.innerWidth, 400) - 40) / GRID_SIZE);
     const DRAG_OFFSET_Y = 70;
 
     // Each piece has: shape (col,row offsets), name, size, pts (placement points)
@@ -646,10 +709,15 @@
     let generatePieceSetTimeoutId = null;
     let checkGameOverTimeoutId    = null;
 
-    // Per-difficulty high score keys
-    const HS_KEY = { easy: 'bbHS_easy', medium: 'bbHS_medium', hard: 'bbHS_hard' };
-    const getHS  = () => parseInt(localStorage.getItem(HS_KEY[difficulty]) || '0');
-    const saveHS = v  => localStorage.setItem(HS_KEY[difficulty], v);
+    // Per-difficulty-and-size high score keys
+    const getHSKey = () => `bbHS_${difficulty}_${GRID_SIZE}`;
+    const getHS    = () => parseInt(localStorage.getItem(getHSKey()) || '0');
+    const saveHS   = v  => localStorage.setItem(getHSKey(), v);
+
+    // Leaderboard: best score per (difficulty × grid size), recorded only without undo
+    const getLBKey   = (d, s) => `bbLB_${d}_${s}`;
+    const getLBScore = (d, s) => parseInt(localStorage.getItem(getLBKey(d, s)) || '0');
+    const saveLBScore = (d, s, v) => localStorage.setItem(getLBKey(d, s), v);
 
     // Performance: O(1) cell lookup + tracked preview set to avoid full scan
     let cellCache    = [];       // [r][c] → DOM element
@@ -691,20 +759,22 @@
     const debugNearEl     = document.getElementById('debug-nearlines');
     const undoBtnEl       = document.getElementById('undo-btn');
     const undoCountEl     = document.getElementById('undo-count');
+    const gameOverUndoBtnEl = document.getElementById('game-over-undo-btn');
 
     // ═══════════════════════════════════════════════════════════════
     // GRID SETUP
     // ═══════════════════════════════════════════════════════════════
     function buildGridDOM() {
-      gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, ${CELL_SIZE}px)`;
+      const cellSize = Math.min(40, (Math.min(window.innerWidth, 440) - 40) / GRID_SIZE);
+      gridEl.style.gridTemplateColumns = `repeat(${GRID_SIZE}, ${cellSize}px)`;
       gridEl.innerHTML = '';
       cellCache = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           const cell = document.createElement('div');
           cell.className    = 'cell';
-          cell.style.width  = `${CELL_SIZE}px`;
-          cell.style.height = `${CELL_SIZE}px`;
+          cell.style.width  = `${cellSize}px`;
+          cell.style.height = `${cellSize}px`;
           cellCache[r][c]   = cell;
           gridEl.appendChild(cell);
         }
@@ -747,7 +817,7 @@
         [[0,0],[1,0],[0,1],[1,1]],
       ];
 
-      const numClusters = 4 + Math.floor(Math.random() * 3);
+      const numClusters = Math.max(3, Math.round(GRID_SIZE * 0.55)) + Math.floor(Math.random() * 3);
       for (let i = 0; i < numClusters; i++) {
         const shape = seedShapes[Math.floor(Math.random() * seedShapes.length)];
         const color = COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -804,19 +874,25 @@
 
     // ── Board-aware scoring ─────────────────────────────────────────
     // Evaluates how useful a piece template is for the current board state.
-    // Simulates every valid placement and returns the best "clearing potential"
-    // score found across all positions:
-    //   +200 per row/col that would be fully cleared by that placement
-    //   +<fill count> per row/col touched (partial credit toward nearly-full lines)
-    // A piece that can clear at least one line from some position will score
-    // much higher than one that only adds isolated cells, so the weighted random
-    // selection below naturally steers toward board-clearing shapes.
+    // Tracks clearing-capable placements (≥1 line cleared) and fill-only placements
+    // separately, applying a 4× multiplier to the best clearing score so the
+    // weighted draw strongly prefers pieces that can actually clear a line.
+    //
+    //   bestClearScore  → best score from any placement that clears ≥1 line
+    //   bestPartialScore → best score from placements that clear nothing
+    //   return: canClear ? bestClearScore*4 + bestPartialScore : bestPartialScore
+    //
+    // A clearing placement (score ≥200) returns ≥800, while a T-piece only
+    // touching half-full rows returns ~24. The effective ratio (~33:1) makes
+    // non-clearing pieces appear only ~3% of the time when clearing pieces exist.
     function scorePieceTemplateForBoard(template) {
       let maxC = 0, maxR = 0;
       template.shape.forEach(([c, r]) => { maxC = Math.max(maxC, c); maxR = Math.max(maxR, r); });
       const mockPiece = { shape: template.shape, width: maxC + 1, height: maxR + 1 };
 
-      let bestScore = 0;
+      let bestClearScore   = 0;
+      let bestPartialScore = 0;
+
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           if (!canPlacePiece(mockPiece, c, r)) continue;
@@ -825,23 +901,53 @@
           const tmp = grid.map(row => [...row]);
           template.shape.forEach(([pc, pr]) => { tmp[r + pr][c + pc] = 'x'; });
 
+          let clearCount = 0;
           let placeScore = 0;
           const touchedRows = new Set(template.shape.map(([, pr]) => r + pr));
           const touchedCols = new Set(template.shape.map(([pc]) => c + pc));
 
           touchedRows.forEach(tr => {
             const filled = tmp[tr].filter(v => v !== null).length;
-            placeScore += (filled === GRID_SIZE) ? 200 : filled;
+            if (filled === GRID_SIZE) { clearCount++; placeScore += 200; }
+            else placeScore += filled;
           });
           touchedCols.forEach(tc => {
             const filled = tmp.filter(row => row[tc] !== null).length;
-            placeScore += (filled === GRID_SIZE) ? 200 : filled;
+            if (filled === GRID_SIZE) { clearCount++; placeScore += 200; }
+            else placeScore += filled;
           });
 
-          if (placeScore > bestScore) bestScore = placeScore;
+          if (clearCount > 0) {
+            if (placeScore > bestClearScore) bestClearScore = placeScore;
+          } else {
+            if (placeScore > bestPartialScore) bestPartialScore = placeScore;
+          }
         }
       }
-      return bestScore;
+
+      // Clearing pieces get a large bonus so they dominate the weighted draw
+      // whenever any clearing option exists in the pool.
+      return bestClearScore > 0
+        ? bestClearScore * 4 + bestPartialScore
+        : bestPartialScore;
+    }
+
+    // Returns true if a built piece can clear ≥1 full row or column from
+    // any valid position on the current board. Used by generatePieceSet()
+    // to guarantee that at least one offered piece has clearing potential.
+    function pieceCanClearLine(piece) {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (!canPlacePiece(piece, c, r)) continue;
+          const tmp = grid.map(row => [...row]);
+          piece.shape.forEach(([pc, pr]) => { tmp[r + pr][c + pc] = 'x'; });
+          for (let tr = 0; tr < GRID_SIZE; tr++)
+            if (tmp[tr].every(v => v !== null)) return true;
+          for (let tc = 0; tc < GRID_SIZE; tc++)
+            if (tmp.every(row => row[tc] !== null)) return true;
+        }
+      }
+      return false;
     }
 
     // Returns how many rows/cols are within `gap` cells of being full.
@@ -943,6 +1049,28 @@
         }
         attempts++;
       } while (attempts < 20 && !currentPieces.some(p => canPieceFitAnywhere(p)));
+
+      // Safety net: if near-complete lines exist but no offered piece can clear one,
+      // try to swap in a piece that can (up to 8 attempts).
+      if (countNearCompleteLines(3) > 0 && !currentPieces.some(p => !p.used && pieceCanClearLine(p))) {
+        for (let sa = 0; sa < 8; sa++) {
+          const candidate = generatePiece(full);
+          if (canPieceFitAnywhere(candidate) && pieceCanClearLine(candidate)) {
+            // Replace the piece with the lowest clearing potential
+            let weakIdx = 0;
+            let weakScore = Infinity;
+            currentPieces.forEach((p, i) => {
+              if (!p.used) {
+                const s = scorePieceTemplateForBoard(p);
+                if (s < weakScore) { weakScore = s; weakIdx = i; }
+              }
+            });
+            currentPieces[weakIdx] = candidate;
+            break;
+          }
+        }
+      }
+
       renderPieces();
     }
 
@@ -1309,6 +1437,7 @@
       overlayEl.classList.add('hidden');
       finalScoreEl.classList.add('hidden');
       highScoreMsgEl.classList.add('hidden');
+      gameOverUndoBtnEl.classList.add('hidden');
       restartBtn.classList.remove('hidden');
       undoBtnEl.classList.remove('hidden');
 
@@ -1341,10 +1470,13 @@
         highScoreMsgEl.classList.remove('hidden');
       }
 
+      addToLeaderboard(score);
+
       overlayMsgEl.textContent     = 'No more moves available!';
       finalScoreEl.textContent     = `Score: ${score}`;
       finalScoreEl.classList.remove('hidden');
       startBtn.textContent         = 'PLAY AGAIN';
+      if (undoHistory.length > 0) gameOverUndoBtnEl.classList.remove('hidden');
       overlayEl.classList.remove('hidden');
     }
 
@@ -1410,12 +1542,91 @@
       else           showNotification(`↩ Undo! (${undoHistory.length} left)`);
     }
 
+    // Undoes the last move from the game-over overlay, resuming gameplay.
+    function performUndoFromGameOver() {
+      if (undoHistory.length === 0 || gameState !== 'over') return;
+
+      const snap = undoHistory.pop();
+      grid           = snap.grid;
+      currentPieces  = snap.currentPieces;
+      score          = snap.score;
+      baseMultiplier = snap.baseMultiplier;
+      boardWipeCount = snap.boardWipeCount;
+      roundCount     = snap.roundCount;
+      linesCleared   = snap.linesCleared;
+      hardChance     = snap.hardChance;
+
+      gameState = 'playing';
+      undoUsed  = true;
+
+      overlayEl.classList.add('hidden');
+      gameOverUndoBtnEl.classList.add('hidden');
+      restartBtn.classList.remove('hidden');
+      undoBtnEl.classList.remove('hidden');
+
+      renderGrid();
+      renderPieces();
+      updateHUD();
+      if (debugVisible) updateDebugPanel();
+      showNotification('↩ Last move undone — score won\'t count for high score');
+    }
+
     // Syncs the undo button's count, enabled state, and visual style.
     function updateUndoBtn() {
       if (!undoBtnEl) return;
       undoCountEl.textContent = undoHistory.length;
       undoBtnEl.disabled = undoHistory.length === 0 || gameState !== 'playing' || isAnimating;
       undoBtnEl.classList.toggle('undo-used', undoUsed);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LEADERBOARD
+    // ═══════════════════════════════════════════════════════════════
+
+    // Records score in the leaderboard (only if undo was not used).
+    function addToLeaderboard(score) {
+      if (undoUsed) return;
+      const prev = getLBScore(difficulty, GRID_SIZE);
+      if (score > prev) saveLBScore(difficulty, GRID_SIZE, score);
+    }
+
+    // Renders the 4×4 (header + 3 diffs) leaderboard table.
+    function renderLeaderboard() {
+      const sizes = [5, 8, 13, 19];
+      const diffs = ['easy', 'medium', 'hard'];
+      const table = document.getElementById('lb-table');
+      if (!table) return;
+      table.innerHTML = '';
+
+      // Header row
+      const head = document.createElement('tr');
+      head.appendChild(document.createElement('th')); // empty corner
+      sizes.forEach(s => {
+        const th = document.createElement('th');
+        th.textContent = `${s}×${s}`;
+        head.appendChild(th);
+      });
+      table.appendChild(head);
+
+      // Data rows — one per difficulty
+      diffs.forEach(d => {
+        const tr = document.createElement('tr');
+        const label = document.createElement('th');
+        label.textContent = d.charAt(0).toUpperCase() + d.slice(1);
+        tr.appendChild(label);
+        sizes.forEach(s => {
+          const td = document.createElement('td');
+          const v = getLBScore(d, s);
+          if (v > 0) {
+            td.textContent = v.toLocaleString();
+          } else {
+            td.textContent = '—';
+            td.classList.add('zero');
+          }
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1485,10 +1696,11 @@
       buildGridDOM();
       bestEl.textContent = getHS();
 
-      startBtn.addEventListener('click',   startGame);
-      restartBtn.addEventListener('click', startGame);
-      debugBtn.addEventListener('click',   toggleDebug);
-      undoBtnEl.addEventListener('click',  performUndo);
+      startBtn.addEventListener('click',          startGame);
+      restartBtn.addEventListener('click',        startGame);
+      debugBtn.addEventListener('click',          toggleDebug);
+      undoBtnEl.addEventListener('click',         performUndo);
+      gameOverUndoBtnEl.addEventListener('click', performUndoFromGameOver);
 
       // Difficulty buttons
       document.querySelectorAll('.diff-btn').forEach(btn => {
@@ -1499,6 +1711,32 @@
           bestEl.textContent = getHS();
           if (debugVisible) updateDebugPanel();
         });
+      });
+
+      // Board size buttons
+      document.querySelectorAll('.size-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          GRID_SIZE = parseInt(btn.dataset.size);
+          document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          buildGridDOM();
+          bestEl.textContent = getHS();
+          renderLeaderboard();
+        });
+      });
+
+      // Leaderboard toggle
+      const lbPanelEl     = document.getElementById('leaderboard-panel');
+      const lbToggleBtnEl = document.getElementById('lb-toggle-btn');
+      const diffSelectEl  = document.getElementById('difficulty-select');
+      const sizeSelectEl  = document.getElementById('size-select');
+      lbToggleBtnEl.addEventListener('click', () => {
+        const showing = !lbPanelEl.classList.contains('hidden');
+        lbPanelEl.classList.toggle('hidden', showing);
+        diffSelectEl.classList.toggle('hidden', !showing);
+        sizeSelectEl.classList.toggle('hidden', !showing);
+        lbToggleBtnEl.textContent = showing ? 'SCORES' : 'BACK';
+        if (!showing) renderLeaderboard();
       });
 
       startFPSLoop();
