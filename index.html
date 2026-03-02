@@ -1122,7 +1122,6 @@
         roundCount++;
         updateHardChance();
         updateHUD();
-        maybeAddObstacles();
         // Delay new piece set until after clear animation (390 ms) + buffer
         setTimeout(generatePieceSet, 450);
       } else {
@@ -1209,33 +1208,6 @@
         if (cleared === 1) showScorePopup(`+${lineScore}`);
         else               showScorePopup(`+${lineScore} COMBO!`);
       }, 390);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // DIFFICULTY ESCALATION – obstacle injection every 5 rounds
-    // ═══════════════════════════════════════════════════════════════
-    function maybeAddObstacles() {
-      if (roundCount % 5 !== 0) return;
-      if (boardFullness() > 0.70) return;
-
-      const numBlocks = 3 + Math.min(Math.floor(roundCount / 5), 4);
-      const color     = COLORS[Math.floor(Math.random() * COLORS.length)];
-      let placed = 0, tries = 0;
-      while (placed < numBlocks && tries++ < 80) {
-        const c = Math.floor(Math.random() * GRID_SIZE);
-        const r = Math.floor(Math.random() * GRID_SIZE);
-        if (!grid[r][c]) { grid[r][c] = color; placed++; }
-      }
-      // Prevent accidental instant-clears
-      for (let r = 0; r < GRID_SIZE; r++)
-        if (grid[r].every(v => v !== null))
-          grid[r][Math.floor(Math.random() * GRID_SIZE)] = null;
-      for (let c = 0; c < GRID_SIZE; c++)
-        if (grid.every(row => row[c] !== null))
-          grid[Math.floor(Math.random() * GRID_SIZE)][c] = null;
-
-      renderGrid();
-      if (placed > 0) showNotification(`⚠ ${placed} blocks added!`);
     }
 
     // ═══════════════════════════════════════════════════════════════
