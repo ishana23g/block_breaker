@@ -515,6 +515,7 @@
     <span id="debug-diff">Mode: Easy</span>
     <span id="debug-chance">HardP: 0%</span>
     <span id="debug-mult">Mult: ×1</span>
+    <span id="debug-nearlines">Near(≤3): 0</span>
   </div>
 
   <script>
@@ -644,12 +645,13 @@
     const highScoreMsgEl = document.getElementById('high-score-msg');
     const overlayMsgEl   = document.getElementById('overlay-msg');
     const notifEl        = document.getElementById('notification');
-    const debugBtn       = document.getElementById('debug-btn');
-    const debugPanelEl   = document.getElementById('debug-panel');
-    const fpsEl          = document.getElementById('fps-display');
-    const debugDiffEl    = document.getElementById('debug-diff');
-    const debugChanceEl  = document.getElementById('debug-chance');
-    const debugMultEl    = document.getElementById('debug-mult');
+    const debugBtn        = document.getElementById('debug-btn');
+    const debugPanelEl    = document.getElementById('debug-panel');
+    const fpsEl           = document.getElementById('fps-display');
+    const debugDiffEl     = document.getElementById('debug-diff');
+    const debugChanceEl   = document.getElementById('debug-chance');
+    const debugMultEl     = document.getElementById('debug-mult');
+    const debugNearEl     = document.getElementById('debug-nearlines');
 
     // ═══════════════════════════════════════════════════════════════
     // GRID SETUP
@@ -761,6 +763,78 @@
       };
     }
 
+    // ── Board-aware scoring ─────────────────────────────────────────
+    // Evaluates how useful a piece template is for the current board state.
+    // Simulates every valid placement and returns the best "clearing potential"
+    // score found across all positions:
+    //   +200 per row/col that would be fully cleared by that placement
+    //   +<fill count> per row/col touched (partial credit toward nearly-full lines)
+    // A piece that can clear at least one line from some position will score
+    // much higher than one that only adds isolated cells, so the weighted random
+    // selection below naturally steers toward board-clearing shapes.
+    function scorePieceTemplateForBoard(template) {
+      let maxC = 0, maxR = 0;
+      template.shape.forEach(([c, r]) => { maxC = Math.max(maxC, c); maxR = Math.max(maxR, r); });
+      const mockPiece = { shape: template.shape, width: maxC + 1, height: maxR + 1 };
+
+      let bestScore = 0;
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (!canPlacePiece(mockPiece, c, r)) continue;
+
+          // Simulate placement on a shallow copy
+          const tmp = grid.map(row => [...row]);
+          template.shape.forEach(([pc, pr]) => { tmp[r + pr][c + pc] = 'x'; });
+
+          let placeScore = 0;
+          const touchedRows = new Set(template.shape.map(([, pr]) => r + pr));
+          const touchedCols = new Set(template.shape.map(([pc]) => c + pc));
+
+          touchedRows.forEach(tr => {
+            const filled = tmp[tr].filter(v => v !== null).length;
+            placeScore += (filled === GRID_SIZE) ? 200 : filled;
+          });
+          touchedCols.forEach(tc => {
+            const filled = tmp.filter(row => row[tc] !== null).length;
+            placeScore += (filled === GRID_SIZE) ? 200 : filled;
+          });
+
+          if (placeScore > bestScore) bestScore = placeScore;
+        }
+      }
+      return bestScore;
+    }
+
+    // Returns how many rows/cols are within `gap` cells of being full.
+    // Used by the debug panel and piece generation to gauge board pressure.
+    function countNearCompleteLines(gap) {
+      let count = 0;
+      for (let r = 0; r < GRID_SIZE; r++) {
+        const missing = grid[r].filter(v => v === null).length;
+        if (missing > 0 && missing <= gap) count++;
+      }
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const missing = grid.filter(row => row[c] === null).length;
+        if (missing > 0 && missing <= gap) count++;
+      }
+      return count;
+    }
+
+    // Weighted random pick from a scored list.
+    // Scores are shifted so the minimum maps to weight 1, preserving relative
+    // differences while still giving every piece a non-zero selection chance.
+    function weightedPick(scored) {
+      const min    = Math.min(...scored.map(s => s.score));
+      const weights = scored.map(s => s.score - min + 1);
+      const total   = weights.reduce((a, b) => a + b, 0);
+      let rand = Math.random() * total;
+      for (let i = 0; i < scored.length; i++) {
+        rand -= weights[i];
+        if (rand <= 0) return scored[i].template;
+      }
+      return scored[scored.length - 1].template;
+    }
+
     function generatePiece(fullness) {
       const small  = PIECES.filter(p => p.size <= 3);
       const medium = PIECES.filter(p => p.size >= 3 && p.size <= 5);
@@ -769,7 +843,13 @@
       if      (fullness > 0.62) pool = [...small, ...small, ...medium];
       else if (fullness > 0.40) pool = [...small, ...medium, ...medium];
       else                      pool = [...small, ...medium, ...medium, ...large];
-      return buildPiece(pool[Math.floor(Math.random() * pool.length)]);
+
+      // Score each candidate against the live board and do a weighted draw.
+      // This biases the selection toward pieces that can clear (or fill) the
+      // rows/columns that are closest to complete, without making the choice
+      // fully deterministic (the game remains challenging and varied).
+      const scored = pool.map(t => ({ template: t, score: scorePieceTemplateForBoard(t) }));
+      return buildPiece(weightedPick(scored));
     }
 
     // Generates a piece that is harder to fit (fewer valid positions on the board).
@@ -1107,8 +1187,9 @@
         renderGrid();
         updateHUD();
 
-        // KEY FIX: re-check which pieces can now be placed after the board opened up
+        // Re-check which pieces can now be placed after the board opened up
         renderPieces();
+        if (debugVisible) updateDebugPanel();
 
         // Board-wipe detection (entire grid empty)
         const boardEmpty = grid.every(row => row.every(v => v === null));
@@ -1240,9 +1321,10 @@
     // ═══════════════════════════════════════════════════════════════
     function updateDebugPanel() {
       const pct = (hardChance * 100).toFixed(0);
-      debugDiffEl.textContent  = `Mode: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+      debugDiffEl.textContent   = `Mode: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
       debugChanceEl.textContent = `HardP: ${pct}%`;
-      debugMultEl.textContent  = `Mult: ×${baseMultiplier}`;
+      debugMultEl.textContent   = `Mult: ×${baseMultiplier}`;
+      debugNearEl.textContent   = `Near(≤3): ${countNearCompleteLines(3)}`;
     }
 
     function startFPSLoop() {
