@@ -933,6 +933,10 @@
             else placeScore += filled;
           });
 
+          // Exponential bonus for clearing multiple lines at once —
+          // makes pieces that can multi-clear dominate the weighted draw.
+          if (clearCount >= 2) placeScore += clearCount * clearCount * 150;
+
           if (clearCount > 0) {
             if (placeScore > bestClearScore) bestClearScore = placeScore;
           } else {
@@ -1039,13 +1043,31 @@
       else if (fullness > 0.40) pool = [...small, ...medium, ...medium];
       else                      pool = [...small, ...medium, ...medium, ...large];
 
+      // ── Gap-size targeting ────────────────────────────────────────
+      // Find the smallest gap counts in near-complete rows/cols (≤ 5 missing).
+      // Boost pool weight for pieces whose size matches those gap counts —
+      // they are the most likely candidates to actually complete a line.
+      const gapSizes = new Set();
+      for (let r = 0; r < GRID_SIZE; r++) {
+        const m = grid[r].filter(v => v === null).length;
+        if (m > 0 && m <= 5) gapSizes.add(m);
+      }
+      for (let c = 0; c < GRID_SIZE; c++) {
+        const m = grid.filter(row => row[c] === null).length;
+        if (m > 0 && m <= 5) gapSizes.add(m);
+      }
+      if (gapSizes.size > 0) {
+        // Pieces whose size exactly matches a gap get 3 extra pool entries each
+        PIECES.forEach(p => {
+          if (gapSizes.has(p.size)) {
+            pool.push(p, p, p);
+          }
+        });
+      }
+
       // ── Compact-shape priority ───────────────────────────────────
       // When rows/columns are nearly complete (≤ 2 cells missing),
-      // irregular pieces often leave 1–2 stray cells in adjacent lines,
-      // blocking further clears. Compact squares (2×2, 3×3) avoid this
-      // because every cell they place is in a shared block of rows AND
-      // columns — no isolated stragglers. We boost their pool weight
-      // proportionally to how many near-complete lines are on the board.
+      // compact squares (2×2, 3×3) avoid isolated stragglers.
       const nearLines = countNearCompleteLines(2);
       if (nearLines > 0) {
         const p2x2 = PIECES.find(p => p.name === '2x2');
@@ -1088,15 +1110,26 @@
       const hardSlots = difficulty === 'hard' ? 2 : difficulty === 'medium' ? 1 : 0;
       let attempts    = 0;
 
+      // How many of the 3 pieces must be able to clear at least one line.
+      // When 2+ near-complete lines exist, guarantee 2 clearers; otherwise 1.
+      const nearLines = countNearCompleteLines(3);
+      const minClearers = nearLines >= 2 ? 2 : nearLines >= 1 ? 1 : 0;
+
       const makePieces = () => {
         currentPieces = [];
+        const usedNames = new Set(); // Prevent offering duplicate shapes
         for (let i = 0; i < 3; i++) {
           const isHardSlot = i < hardSlots;
-          if (isHardSlot && Math.random() < hardChance) {
-            currentPieces.push(generateHardPiece(full));
-          } else {
-            currentPieces.push(generatePiece(full));
-          }
+          let piece;
+          let inner = 0;
+          do {
+            piece = (isHardSlot && Math.random() < hardChance)
+              ? generateHardPiece(full)
+              : generatePiece(full);
+            inner++;
+          } while (usedNames.has(piece.name) && inner < 15);
+          usedNames.add(piece.name);
+          currentPieces.push(piece);
         }
       };
 
@@ -1111,29 +1144,44 @@
       if (!currentPieces.some(p => canPieceFitAnywhere(p))) {
         attempts = 0;
         do {
+          const usedNames = new Set();
           currentPieces = [];
-          for (let i = 0; i < 3; i++) currentPieces.push(generatePiece(full));
+          for (let i = 0; i < 3; i++) {
+            let piece;
+            let inner = 0;
+            do { piece = generatePiece(full); inner++; }
+            while (usedNames.has(piece.name) && inner < 15);
+            usedNames.add(piece.name);
+            currentPieces.push(piece);
+          }
           attempts++;
         } while (attempts < 20 && !currentPieces.some(p => canPieceFitAnywhere(p)));
       }
 
-      // Safety net: if near-complete lines exist but no offered piece can clear one,
-      // try to swap in a piece that can (up to 8 attempts).
-      if (countNearCompleteLines(3) > 0 && !currentPieces.some(p => !p.used && pieceCanClearLine(p))) {
-        for (let sa = 0; sa < 8; sa++) {
-          const candidate = generatePiece(full);
-          if (canPieceFitAnywhere(candidate) && pieceCanClearLine(candidate)) {
-            // Replace the piece with the lowest clearing potential
-            let weakIdx = 0;
-            let weakScore = Infinity;
-            currentPieces.forEach((p, i) => {
-              if (!p.used) {
-                const s = scorePieceTemplateForBoard(p);
-                if (s < weakScore) { weakScore = s; weakIdx = i; }
-              }
-            });
-            currentPieces[weakIdx] = candidate;
-            break;
+      // Guarantee minClearers pieces in the set can clear a line.
+      // Replaces the weakest non-clearing pieces with clearing candidates,
+      // always avoiding duplicate shapes.
+      if (minClearers > 0) {
+        const usedNames = new Set(currentPieces.map(p => p.name));
+        let clearerCount = currentPieces.filter(p => !p.used && pieceCanClearLine(p)).length;
+        let deficit = minClearers - clearerCount;
+
+        if (deficit > 0) {
+          // Sort non-clearing pieces by score ascending (weakest → replaced first)
+          const nonClearers = currentPieces
+            .map((p, i) => ({ p, i, score: scorePieceTemplateForBoard(p) }))
+            .filter(({ p }) => !p.used && !pieceCanClearLine(p))
+            .sort((a, b) => a.score - b.score);
+
+          for (let sa = 0; sa < 25 && deficit > 0 && nonClearers.length > 0; sa++) {
+            const candidate = generatePiece(full);
+            if (!usedNames.has(candidate.name) && canPieceFitAnywhere(candidate) && pieceCanClearLine(candidate)) {
+              const { i } = nonClearers.shift();
+              usedNames.delete(currentPieces[i].name);
+              currentPieces[i] = candidate;
+              usedNames.add(candidate.name);
+              deficit--;
+            }
           }
         }
       }
