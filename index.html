@@ -667,22 +667,26 @@
       { shape: [[0,1],[1,0],[1,1]], name: 'L3c', size: 3, pts: 18 },
       { shape: [[0,0],[0,1],[1,1]], name: 'L3d', size: 3, pts: 18 },
 
+      // ─ Diagonal pairs (corner-connected only, no shared edges) ─
+      { shape: [[0,0],[1,1]], name: 'diag2-a', size: 2, pts: 12 },
+      { shape: [[1,0],[0,1]], name: 'diag2-b', size: 2, pts: 12 },
+
+      // ─ Diagonal triples (corner-connected only, no shared edges) ─
+      { shape: [[0,0],[1,1],[2,2]], name: 'diag3-line',  size: 3, pts: 22 },
+      { shape: [[2,0],[1,1],[0,2]], name: 'diag3-rline', size: 3, pts: 22 },
+      { shape: [[0,0],[1,1],[2,0]], name: 'diag3-v',     size: 3, pts: 20 },
+      { shape: [[0,2],[1,1],[2,2]], name: 'diag3-iv',    size: 3, pts: 20 },
+      { shape: [[0,0],[1,1],[0,2]], name: 'diag3-z1',    size: 3, pts: 20 },
+      { shape: [[2,0],[1,1],[2,2]], name: 'diag3-z2',    size: 3, pts: 20 },
+
       // ─ Tetrominoes ─
       { shape: [[0,0],[1,0],[2,0],[3,0]], name: 'I-h',  size: 4, pts: 20 },
       { shape: [[0,0],[0,1],[0,2],[0,3]], name: 'I-v',  size: 4, pts: 20 },
       { shape: [[0,0],[1,0],[0,1],[1,1]], name: 'O',    size: 4, pts: 22 },
-      { shape: [[0,0],[1,0],[2,0],[1,1]], name: 'T-d',  size: 4, pts: 25 },
-      { shape: [[1,0],[0,1],[1,1],[2,1]], name: 'T-u',  size: 4, pts: 25 },
-      { shape: [[0,0],[0,1],[0,2],[1,1]], name: 'T-r',  size: 4, pts: 25 },
-      { shape: [[1,0],[0,1],[1,1],[1,2]], name: 'T-l',  size: 4, pts: 25 },
       { shape: [[0,0],[1,0],[2,0],[0,1]], name: 'L-a',  size: 4, pts: 22 },
       { shape: [[0,0],[1,0],[2,0],[2,1]], name: 'J-a',  size: 4, pts: 22 },
       { shape: [[0,0],[0,1],[0,2],[1,2]], name: 'L-b',  size: 4, pts: 22 },
       { shape: [[1,0],[1,1],[0,2],[1,2]], name: 'J-b',  size: 4, pts: 22 },
-      { shape: [[0,0],[1,0],[1,1],[2,1]], name: 'S-h',  size: 4, pts: 28 },
-      { shape: [[1,0],[2,0],[0,1],[1,1]], name: 'Z-h',  size: 4, pts: 28 },
-      { shape: [[1,0],[0,1],[1,1],[0,2]], name: 'S-v',  size: 4, pts: 28 },
-      { shape: [[0,0],[0,1],[1,1],[1,2]], name: 'Z-v',  size: 4, pts: 28 },
 
       // ─ Pentominoes ─
       { shape: [[0,0],[1,0],[2,0],[3,0],[4,0]], name: 'I5-h', size: 5, pts: 30 },
@@ -691,9 +695,6 @@
       { shape: [[0,0],[1,0],[2,0],[2,1],[2,2]], name: 'L5-b', size: 5, pts: 35 },
       { shape: [[0,0],[0,1],[0,2],[1,2],[2,2]], name: 'L5-c', size: 5, pts: 35 },
       { shape: [[2,0],[2,1],[0,2],[1,2],[2,2]], name: 'L5-d', size: 5, pts: 35 },
-      { shape: [[0,0],[1,0],[2,0],[1,1],[1,2]], name: 'T5',   size: 5, pts: 38 },
-      { shape: [[0,0],[1,0],[1,1],[1,2],[2,2]], name: 'S5',   size: 5, pts: 40 },
-      { shape: [[1,0],[2,0],[0,1],[1,1],[0,2]], name: 'Z5',   size: 5, pts: 40 },
 
       // ─ Rectangles ─
       { shape: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1]], name: '3x2', size: 6, pts: 45 },
@@ -706,9 +707,9 @@
 
     // Names considered "hard" pieces (large or tricky shapes with fewer fit positions)
     const HARD_PIECE_NAMES = new Set([
-      'I5-h','I5-v','L5-a','L5-b','L5-c','L5-d','T5','S5','Z5',
-      '3x2','2x3','3x3','I-h','I-v','S-h','Z-h','S-v','Z-v',
-      'T-d','T-u','T-r','T-l',
+      'I5-h','I5-v','L5-a','L5-b','L5-c','L5-d',
+      '3x2','2x3','3x3','I-h','I-v',
+      'diag3-line','diag3-rline',
     ]);
 
     // ═══════════════════════════════════════════════════════════════
@@ -926,10 +927,12 @@
 
       let bestClearScore   = 0;
       let bestPartialScore = 0;
+      let placementCount   = 0;
 
       for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
           if (!canPlacePiece(mockPiece, c, r)) continue;
+          placementCount++;
 
           // Simulate placement on a shallow copy
           const tmp = grid.map(row => [...row]);
@@ -963,11 +966,59 @@
         }
       }
 
+      // Flexibility bonus: each additional valid placement adds to the score so
+      // pieces that fit in many spots are preferred over barely-fitting pieces.
+      const flexBonus = placementCount * 3;
+
       // Clearing pieces get a large bonus so they dominate the weighted draw
       // whenever any clearing option exists in the pool.
       return bestClearScore > 0
-        ? bestClearScore * 4 + bestPartialScore
-        : bestPartialScore;
+        ? bestClearScore * 4 + bestPartialScore + flexBonus
+        : bestPartialScore + flexBonus;
+    }
+
+    // Returns the number of valid placement positions for a piece template on the
+    // current board. Used as a "flexibility" signal — pieces with more options are
+    // safer to offer because the player always has room to manoeuvre.
+    function countValidPlacements(template) {
+      let maxC = 0, maxR = 0;
+      template.shape.forEach(([c, r]) => { maxC = Math.max(maxC, c); maxR = Math.max(maxR, r); });
+      const mockPiece = { shape: template.shape, width: maxC + 1, height: maxR + 1 };
+      let count = 0;
+      for (let r = 0; r < GRID_SIZE; r++)
+        for (let c = 0; c < GRID_SIZE; c++)
+          if (canPlacePiece(mockPiece, c, r)) count++;
+      return count;
+    }
+
+    // BFS flood-fill to find connected regions of empty cells (4-connectivity).
+    // Returns an array of clusters, each cluster being an array of [col,row] pairs.
+    function getEmptyClusters() {
+      const visited = Array.from({ length: GRID_SIZE }, () => new Array(GRID_SIZE).fill(false));
+      const clusters = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (!grid[r][c] && !visited[r][c]) {
+            const cluster = [];
+            const queue = [[r, c]];
+            visited[r][c] = true;
+            while (queue.length) {
+              const [cr, cc] = queue.shift();
+              cluster.push([cc, cr]);
+              for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
+                const nr = cr + dr, nc = cc + dc;
+                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE
+                    && !grid[nr][nc] && !visited[nr][nc]) {
+                  visited[nr][nc] = true;
+                  queue.push([nr, nc]);
+                }
+              }
+            }
+            clusters.push(cluster);
+          }
+        }
+      }
+      return clusters;
     }
 
     // Returns true if a built piece can clear ≥1 full row or column from
@@ -1057,7 +1108,10 @@
       const medium = PIECES.filter(p => p.size >= 3 && p.size <= 5);
       const large  = PIECES.filter(p => p.size >= 5);
       let pool;
-      if      (fullness > 0.62) pool = [...small, ...small, ...medium];
+      // At very high fullness the board has few scattered gaps — triple-weight
+      // small pieces to avoid offering shapes that can barely fit anywhere.
+      if      (fullness > 0.70) pool = [...small, ...small, ...small, ...medium];
+      else if (fullness > 0.55) pool = [...small, ...small, ...medium];
       else if (fullness > 0.40) pool = [...small, ...medium, ...medium];
       else                      pool = [...small, ...medium, ...medium, ...large];
 
@@ -1083,6 +1137,28 @@
         });
       }
 
+      // ── Connected-cluster targeting ───────────────────────────────
+      // BFS-flood the empty cells to find isolated connected regions.
+      // Pieces larger than the biggest reachable cluster cannot help fill
+      // any contiguous space, so filter them out. Also boost pieces whose
+      // size matches small isolated clusters (≤ 4 cells) so the player
+      // gets shapes that can actually plug those pockets.
+      const clusters = getEmptyClusters();
+      if (clusters.length > 0) {
+        const maxCluster = Math.max(...clusters.map(cl => cl.length));
+        // When the board is fragmented into small islands, prune over-sized pieces
+        if (maxCluster <= 5) {
+          pool = pool.filter(p => p.size <= maxCluster);
+        }
+        // Extra weight for pieces matching the size of isolated clusters
+        const isolatedSizes = new Set(
+          clusters.filter(cl => cl.length <= 4).map(cl => cl.length)
+        );
+        PIECES.forEach(p => {
+          if (isolatedSizes.has(p.size)) pool.push(p, p);
+        });
+      }
+
       // ── Compact-shape priority ───────────────────────────────────
       // When rows/columns are nearly complete (≤ 2 cells missing),
       // compact squares (2×2, 3×3) avoid isolated stragglers.
@@ -1105,6 +1181,8 @@
       // This biases the selection toward pieces that can clear (or fill) the
       // rows/columns that are closest to complete, without making the choice
       // fully deterministic (the game remains challenging and varied).
+      // The scoring function itself also rewards placement flexibility so
+      // pieces with more valid positions rank higher than barely-fitting ones.
       const scored = pool.map(t => ({ template: t, score: scorePieceTemplateForBoard(t) }));
       return buildPiece(weightedPick(scored));
     }
@@ -1199,6 +1277,29 @@
               currentPieces[i] = candidate;
               usedNames.add(candidate.name);
               deficit--;
+            }
+          }
+        }
+      }
+
+      // ── Minimum-flexibility pass ──────────────────────────────────
+      // Any piece with fewer than 3 valid placement positions is a near-dead
+      // piece that frustrates the player. Try swapping it out for something
+      // with more room to manoeuvre. Skip this pass when the board is nearly
+      // empty (fullness < 0.3) since any piece is fine then.
+      if (full >= 0.30) {
+        const MIN_PLACEMENTS = 3;
+        const usedNames = new Set(currentPieces.map(p => p.name));
+        for (let i = 0; i < currentPieces.length; i++) {
+          if (countValidPlacements(currentPieces[i]) < MIN_PLACEMENTS) {
+            for (let sa = 0; sa < 20; sa++) {
+              const candidate = generatePiece(full);
+              if (!usedNames.has(candidate.name) && countValidPlacements(candidate) >= MIN_PLACEMENTS) {
+                usedNames.delete(currentPieces[i].name);
+                currentPieces[i] = candidate;
+                usedNames.add(candidate.name);
+                break;
+              }
             }
           }
         }
